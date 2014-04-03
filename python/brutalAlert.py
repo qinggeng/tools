@@ -47,8 +47,7 @@ class NotificationStack(wx.Panel):
 	
 	def panelWillClose(self, traits, ev):
 		notification, panel = traits
-		panel.Hide()
-		self.RemoveChild(panel)
+		panel.Destroy()
 		self.livedNotificaitons.remove(traits)
 		self.updateNotificationLayout()
 	
@@ -96,6 +95,43 @@ def createNotification(notification, panel):
 def notificationRemoved(notification):
 	pass
 
+class CustomTaskBarIcon(wx.TaskBarIcon):
+	""""""
+ 
+	#----------------------------------------------------------------------
+	def __init__(self, frame):
+		"""Constructor"""
+		wx.TaskBarIcon.__init__(self)
+		self.frame = frame
+ 
+		img = wx.Image("appbar.speakerphone.png", wx.BITMAP_TYPE_ANY)
+		img = img.Scale(24, 24)
+		bmp = wx.BitmapFromImage(img)
+		self.icon = wx.EmptyIcon()
+		self.icon.CopyFromBitmap(bmp)
+ 
+		self.SetIcon(self.icon, "Restore")
+		self.Bind(wx.EVT_TASKBAR_LEFT_DOWN, self.OnTaskBarLeftClick)
+ 
+	#----------------------------------------------------------------------
+	def OnTaskBarActivate(self, evt):
+		""""""
+		pass
+ 
+	#----------------------------------------------------------------------
+	def OnTaskBarClose(self, evt):
+		"""
+		Destroy the taskbar icon and frame from the taskbar icon itself
+		"""
+		self.frame.Close()
+ 
+	#----------------------------------------------------------------------
+	def OnTaskBarLeftClick(self, evt):
+		"""
+		Create the right-click menu
+		"""
+		self.frame.Show()
+
 class BrutalAlert(wx.Frame):
 	def __init__(self):
 		wx.Frame.__init__(self, parent = None, title = u'粗鲁闹钟', style = wx.STAY_ON_TOP)
@@ -104,13 +140,32 @@ class BrutalAlert(wx.Frame):
 		self.stack.pushNotification(u"hello world")
 		self.stack.pushNotification(u"hello world2")
 		self.stack.pushNotification(u"hello world3")
-		self.escID = 100
-		self.RegisterHotKey(self.escID, 0, win32con.VK_ESCAPE)
+		self.escID = wx.NewId()
+		#self.RegisterHotKey(self.escID, 0, win32con.VK_ESCAPE)
 		self.Bind(wx.EVT_HOTKEY, self.onEsc, id = self.escID)
+		testID = wx.NewId()
+		self.Bind(wx.EVT_MENU, self.onQuit, id = testID)
+		accel = wx.AcceleratorTable([(wx.ACCEL_NORMAL, ord('q'), testID)])
+		self.SetAcceleratorTable(accel)
+		self.tbIcon = CustomTaskBarIcon(self)
+ 
+		self.Bind(wx.EVT_ICONIZE, self.onMinimize)
+		self.Bind(wx.EVT_CLOSE, self.onClose)
+	def onMinimize(self, ev):
+		self.Hide()
+
+	def onClose(self, ev):
+		self.tbIcon.RemoveIcon()
+		self.tbIcon.Destroy()
+		self.Destroy()
+	def onQuit(self, ev):
+		print "will quit"
+		self.onMinimize(ev)
 	def onEsc(self, ev):
 		self.minimize()
 	def minimize(self):
 		print "minimized"
+		quit()
 	def layout(self):
 		sz = wx.BoxSizer(wx.HORIZONTAL)
 		self.SetSizer(sz)
