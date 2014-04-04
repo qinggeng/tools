@@ -1,11 +1,42 @@
 #-*-coding:utf-8-*-
+import time
 import wx
+import wx.lib.newevent
 import functools
 import win32con
+import threading
+import winsys
+import win32file
+import win32event
 partition = lambda xs, p: reduce(lambda (a, b), c: p(c) and (a + [c], b) or (a, b + [c]), xs, ([], []))
 kPanelSpacing = 2
 kMarginRight = 20
 kMarginTop = 20
+NotificationEvent, EVT_NOTIFICATION = wx.lib.newevent.NewEvent()
+class NtEvt(NotificationEvent):
+	def __init__(self):
+		NotificationEvent.__init__(self)
+		self.notification = None
+
+def monitorMailSlot(commands):
+	slot = win32file.CreateMailslot(r'\\.\mailslot\notificationCenter', 0, 1, None)
+	while commands['next'] == 'continue':
+		try:
+			maxMsgSize, nextMsgSize, msgCount, timeout = win32file.GetMailslotInfo(slot)
+			while msgCount != 0:
+				buf = win32file.AllocateReadBuffer(nextMsgSize + 1)
+				actualSize, msg = win32file.ReadFile(slot, buf)
+				wnd = commands['center']
+				evt = NtEvt()
+				evt.notification = str(buf)
+				print "send event to ", wnd
+				wx.PostEvent(wnd, evt)
+				maxMsgSize, nextMsgSize, msgCount, timeout = win32file.GetMailslotInfo(slot)
+		except Exception, e:
+			print "exception:", e
+			pass
+	slot.close()
+
 class NotificationStack(wx.Panel):
 	def __init__(self, parent):
 		wx.Panel.__init__(self, parent)
@@ -14,6 +45,9 @@ class NotificationStack(wx.Panel):
 		self.notificationPanelSize = None
 		self.notificationRemoved = None
 		self.presentNotification = None
+	def onNotification(self, ev):
+		notification = ev.notification
+		self.pushNotification(notification)
 	def pushNotification(self, notification):
 		if None == self.notificationPanelSize:
 			return
@@ -137,9 +171,6 @@ class BrutalAlert(wx.Frame):
 		wx.Frame.__init__(self, parent = None, title = u'粗鲁闹钟', style = wx.STAY_ON_TOP)
 		self.layout()
 		self.ShowFullScreen(wx.FULLSCREEN_NOMENUBAR)
-		self.stack.pushNotification(u"hello world")
-		self.stack.pushNotification(u"hello world2")
-		self.stack.pushNotification(u"hello world3")
 		self.escID = wx.NewId()
 		#self.RegisterHotKey(self.escID, 0, win32con.VK_ESCAPE)
 		self.Bind(wx.EVT_HOTKEY, self.onEsc, id = self.escID)
@@ -151,6 +182,11 @@ class BrutalAlert(wx.Frame):
  
 		self.Bind(wx.EVT_ICONIZE, self.onMinimize)
 		self.Bind(wx.EVT_CLOSE, self.onClose)
+		self.Bind(EVT_NOTIFICATION, self.onNotification)
+		self.Hide()
+	def onNotification(self, ev):
+		self.stack.pushNotification(ev.notification)
+		self.Show()
 	def onMinimize(self, ev):
 		self.Hide()
 
@@ -178,6 +214,13 @@ class BrutalAlert(wx.Frame):
 def showAlert():
 	a = wx.App(redirect = False)
 	f = BrutalAlert()
+	commands = dict()
+	commands['next'] = "continue"
+	commands["center"] = f
+	t = threading.Thread(target = monitorMailSlot, args = (commands,))
+	t.start()
 	a.MainLoop()
+	commands['next'] = 'stop' 
+
 if __name__ == '__main__':
 	showAlert()
