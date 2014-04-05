@@ -5,7 +5,6 @@ import wx.lib.newevent
 import functools
 import win32con
 import threading
-import winsys
 import win32file
 import win32event
 partition = lambda xs, p: reduce(lambda (a, b), c: p(c) and (a + [c], b) or (a, b + [c]), xs, ([], []))
