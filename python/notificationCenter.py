@@ -28,7 +28,6 @@ def monitorMailSlot(commands):
 				wnd = commands['center']
 				evt = NtEvt()
 				evt.notification = str(buf)
-				print "send event to ", wnd
 				wx.PostEvent(wnd, evt)
 				maxMsgSize, nextMsgSize, msgCount, timeout = win32file.GetMailslotInfo(slot)
 		except Exception, e:
