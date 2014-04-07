@@ -1,2 +1,4 @@
 python/.brutalAlert.py.swp
 python/.sendNotification.py.swp
+python/notificationParser.pyc
+python/scopeParsers.pyc

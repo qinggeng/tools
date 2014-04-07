@@ -14,6 +14,7 @@ scopeBeginPattern = re.compile(r'\s*\{\s*', re.U)
 scopeEndPattern = re.compile(r'\s*\}\s*', re.U)
 namePattern = re.compile(r'[a-zA-Z_]\w*', re.U)
 colonPattern = re.compile(r'\s*:\s*', re.U)
+commaPattern = re.compile(r'\s*,\s*', re.U)
 
 class SymbolsIterator(object):
 	def __init__(self, symbols):
@@ -23,11 +24,11 @@ class SymbolsIterator(object):
 		self.keys = list(keys)
 		self.symbols = symbols
 		self.index = 0
-	def next():
-		if index == len(self.keys):
-			raise StopIetration
+	def next(self):
+		if self.index == len(self.keys):
+			raise StopIteration
 		return self.symbols[self.keys[index]]
-		index = index + 1
+		self.index = self.index + 1
 	def __iter__(self):
 		return self
 
@@ -46,8 +47,14 @@ class Symbols(object):
 		raise KeyError
 	def __setitem__(self, key, value):
 		self.stack[-1][key] = value
-	def __iter__():
+	def __iter__(self):
 		return SymbolsIterator(self)
+	def result(self):
+		if '__result__' in self.stack[-2]:
+			return self.stack[-2]['__result__']
+		return None
+	def setResult(self, value):
+		self.stack[-2]['__result__'] = value
 
 def token(pattern, action, symbols, string):
 	matched = pattern.match(string)
@@ -109,28 +116,20 @@ COLON = functools.partial(
 		token,
 		colonPattern,
 		None)
+COMMA = functools.partial(
+		token,
+		commaPattern,
+		None)
 SCOPE_NAME = functools.partial(
 		sequence,
 		[NAME, COLON],
 		setScopeName)
 
-notificationScopePattern = re.compile(r'notification', re.U)
 stringPattern = re.compile(r'"([^\\|"]|\\.)*"', re.U)
 
-def setNotificationContent(symbols, string):
-	print 'notification content is:', string
+def setVariable(name, symbols, value):
+	symbols[name] = value
 
-SIMPLE_NOTIFICATION = functools.partial(
-		token,
-		stringPattern,
-		setNotificationContent)
-
-NOTIFICATION = functools.partial(
-		select,
-		[SIMPLE_NOTIFICATION],
-		None)
-
-bodyParsers['notification'] = NOTIFICATION
 
 def parseBody(bodyParsers, symbols, string):
 	parserName = symbols['__scope_name__']
@@ -152,10 +151,10 @@ SCOPE = functools.partial(
 def parse(string):
 	symbols = Symbols()
 	SCOPE(symbols, string)
+	return symbols.result()
 
 if __name__ == '__main__':
 	p = re.compile('[a-z]+')
 	m = p.match('acs111')
 	print dir(m)
 	print m.group(0)
-	parse('{   notification :   "hello world!" }')

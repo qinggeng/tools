@@ -7,6 +7,7 @@ import win32con
 import threading
 import win32file
 import win32event
+import notificationParser
 partition = lambda xs, p: reduce(lambda (a, b), c: p(c) and (a + [c], b) or (a, b + [c]), xs, ([], []))
 kPanelSpacing = 2
 kMarginRight = 20
@@ -49,6 +50,7 @@ class NotificationStack(wx.Panel):
 	def pushNotification(self, notification):
 		if None == self.notificationPanelSize:
 			return
+		notification = notificationParser.parseNotification(notification)
 		width, height = self.notificationPanelSize(notification, self.GetSize())
 		tail = 0
 		panelWidth, panelHeight = self.GetSize()
@@ -101,9 +103,16 @@ def createNotification(notification, panel):
 	kIconWidth = 24
 	kIconHeight = 24
 	kIconSize = (kIconWidth, kIconHeight)
-	panel.SetBackgroundColour((255, 255, 255, 255))
+	if 'background' in notification:
+		background = notification['background']
+	else:
+		background = '#FFFFFF'
+	font = panel.GetFont()
+	font.SetPointSize(12)
+	panel.SetFont(font)
+	panel.SetBackgroundColour(background)
 	st = wx.StaticText(panel)
-	st.SetLabel(notification)
+	st.SetLabel(notification['content'])
 	vsz = wx.BoxSizer(wx.VERTICAL)
 	vsz.Add((-1, kMarginTop))
 	sz = wx.BoxSizer(wx.HORIZONTAL)
@@ -118,6 +127,7 @@ def createNotification(notification, panel):
 	btn = wx.BitmapButton(panel, style = 0)
 	btn.SetBitmapLabel(bmp)
 	btn.SetSize(kIconSize)
+	btn.SetBackgroundColour(background)
 	width, height = panel.GetSize()
 	btn.Move((width - kIconWidth - kMarginLeft, kMarginTop))
 
@@ -181,7 +191,7 @@ class BrutalAlert(wx.Frame):
 		self.Bind(wx.EVT_ICONIZE, self.onMinimize)
 		self.Bind(wx.EVT_CLOSE, self.onClose)
 		self.Bind(EVT_NOTIFICATION, self.onNotification)
-		self.Hide()
+		#self.Hide()
 	def onNotification(self, ev):
 		self.stack.pushNotification(ev.notification)
 		self.Show()
@@ -217,6 +227,7 @@ def showAlert():
 	commands["center"] = f
 	t = threading.Thread(target = monitorMailSlot, args = (commands,))
 	t.start()
+	f.stack.pushNotification('{notification: {content: "a notification"}, {background: "#FFFF00"}}')
 	a.MainLoop()
 	commands['next'] = 'stop' 
 

@@ -1,0 +1,6 @@
+2014年4月7日
+sendNotification: 加入参数处理
+sendNotification: 加入通知分类参数（warning， error， notification等等）和对应的背景色
+notificationCenter: 加入通知源，通知标题的显示和布局设计
+notificationCenter: 加入通知的自动换行
+notificationParser: 加入url的property
