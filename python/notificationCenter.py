@@ -18,8 +18,10 @@ class NtEvt(NotificationEvent):
 		NotificationEvent.__init__(self)
 		self.notification = None
 
+NoMoreNotifications, EVT_NO_MORE_NOTIFICATION = wx.lib.newevent.NewEvent()
+
 def monitorMailSlot(commands):
-	slot = win32file.CreateMailslot(r'\\.\mailslot\notificationCenter', 0, 1, None)
+	slot = win32file.CreateMailslot(r'\\.\mailslot\notificationCenter', 100, 1, None)
 	while commands['next'] == 'continue':
 		try:
 			maxMsgSize, nextMsgSize, msgCount, timeout = win32file.GetMailslotInfo(slot)
@@ -63,7 +65,7 @@ class NotificationStack(wx.Panel):
 			panel.Move(pos)
 		while len(self.livedNotificaitons) < tail:
 			theNotification, panel = self.livedNotificaitons.pop()
-			self.RemoveChild(panel)
+			panel.Destroy()
 			self.notificationRemoved(theNotification)
 		panel = wx.Panel(self)
 		panel.SetSize((width, height))
@@ -71,9 +73,7 @@ class NotificationStack(wx.Panel):
 		self.livedNotificaitons.append((notification, panel))
 		closeBtn = self.presentNotification(notification, panel)
 		closeBtn.Bind(wx.EVT_BUTTON, functools.partial(self.panelWillClose, self.livedNotificaitons[-1]))
-		print panel.GetSize()
-		print panel.GetPosition()
-		print self.GetSize()
+		self.updateNotificationLayout()
 		self.Refresh()
 		
 	def calcNotificationRect(self, w, h):
@@ -87,12 +87,14 @@ class NotificationStack(wx.Panel):
 	
 	def updateNotificationLayout(self):
 		yPos = kMarginTop
+		if len(self.livedNotificaitons) == 0:
+			wx.PostEvent(self.GetParent(), NoMoreNotifications())
+			return
 		for notification, panel in reversed(self.livedNotificaitons):
 			x, y = panel.GetPosition()
 			w, h = panel.GetSize()
 			panel.Move((x, yPos))
 			yPos = yPos + h + kPanelSpacing
-		pass
 
 def panelSize(notification, refSize):
 	return (300, 60)
@@ -113,6 +115,11 @@ def createNotification(notification, panel):
 	panel.SetBackgroundColour(background)
 	st = wx.StaticText(panel)
 	st.SetLabel(notification['content'])
+	st.Wrap(panel.GetSize().width - kIconHeight)
+	print st.GetSize()
+	panelSize = panel.GetSize()
+	panelSize.height = st.GetSize().height + kMarginTop * 2
+	panel.SetSize(panelSize)
 	vsz = wx.BoxSizer(wx.VERTICAL)
 	vsz.Add((-1, kMarginTop))
 	sz = wx.BoxSizer(wx.HORIZONTAL)
@@ -191,10 +198,14 @@ class NotificationCenter(wx.Frame):
 		self.Bind(wx.EVT_ICONIZE, self.onMinimize)
 		self.Bind(wx.EVT_CLOSE, self.onClose)
 		self.Bind(EVT_NOTIFICATION, self.onNotification)
+		self.Bind(EVT_NO_MORE_NOTIFICATION, self.onNoMoreNotifications)
 		self.Hide()
 	def onNotification(self, ev):
 		self.stack.pushNotification(ev.notification)
 		self.Show()
+
+	def onNoMoreNotifications(self, ev):
+		self.Hide()
 	def onMinimize(self, ev):
 		self.Hide()
 
@@ -203,12 +214,10 @@ class NotificationCenter(wx.Frame):
 		self.tbIcon.Destroy()
 		self.Destroy()
 	def onQuit(self, ev):
-		print "will quit"
 		self.onMinimize(ev)
 	def onEsc(self, ev):
 		self.minimize()
 	def minimize(self):
-		print "minimized"
 		quit()
 	def layout(self):
 		sz = wx.BoxSizer(wx.HORIZONTAL)
@@ -227,7 +236,27 @@ def showAlert():
 	commands["center"] = f
 	t = threading.Thread(target = monitorMailSlot, args = (commands,))
 	t.start()
-	f.stack.pushNotification('{notification: {content: "a notification"}, {background: "#FFFF00"}}')
+	f.stack.pushNotification(u'''{notification: {content: "
+　　　　　春江花月夜
+春江潮水连海平，海上明月共潮生。
+滟滟随波千万里，何处春江无月明![1]
+江流宛转绕芳甸，月照花林皆似霰。
+空里流霜不觉飞，汀上白沙看不见。
+江天一色无纤尘，皎皎空中孤月轮。
+江畔何人初见月？江月何年初照人？
+人生代代无穷已，江月年年望相似。
+不知江月待何人，但见长江送流水。
+白云一片去悠悠，青枫浦上不胜愁。
+谁家今夜扁舟子？何处相思明月楼？
+可怜楼上月徘徊，应照离人妆镜台。
+玉户帘中卷不去，捣衣砧上拂还来。
+此时相望不相闻，愿逐月华流照君。
+鸿雁长飞光不度，鱼龙潜跃水成文。
+昨夜闲潭梦落花，可怜春半不还家。
+江水流春去欲尽，江潭落月复西斜。
+斜月沉沉藏海雾，碣石潇湘无限路。
+不知乘月几人归，落月摇情满江树。[2]
+	"}, {background: "#FFFF00"}}''')
 	a.MainLoop()
 	commands['next'] = 'stop' 
 
