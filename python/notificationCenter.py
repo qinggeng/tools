@@ -174,7 +174,7 @@ class CustomTaskBarIcon(wx.TaskBarIcon):
 		"""
 		self.frame.Show()
 
-class BrutalAlert(wx.Frame):
+class NotificationCenter(wx.Frame):
 	def __init__(self):
 		wx.Frame.__init__(self, parent = None, title = u'粗鲁闹钟', style = wx.STAY_ON_TOP)
 		self.layout()
@@ -191,7 +191,7 @@ class BrutalAlert(wx.Frame):
 		self.Bind(wx.EVT_ICONIZE, self.onMinimize)
 		self.Bind(wx.EVT_CLOSE, self.onClose)
 		self.Bind(EVT_NOTIFICATION, self.onNotification)
-		#self.Hide()
+		self.Hide()
 	def onNotification(self, ev):
 		self.stack.pushNotification(ev.notification)
 		self.Show()
@@ -221,7 +221,7 @@ class BrutalAlert(wx.Frame):
 		sz.Add(notificationStack, proportion = 1, flag = wx.EXPAND|wx.ALL)
 def showAlert():
 	a = wx.App(redirect = False)
-	f = BrutalAlert()
+	f = NotificationCenter()
 	commands = dict()
 	commands['next'] = "continue"
 	commands["center"] = f
