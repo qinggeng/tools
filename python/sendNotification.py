@@ -2,13 +2,12 @@
 from win32file import *
 import sys
 from argparse import ArgumentParser
-argsParser = ArgumentParser(u'send notifications')
-#argsParser.add_argument(u'--content', action = 'store', dest='content', default='')
-argsParser.add_argument(u'--type', u'-t', action = 'store', dest='notificationType', required = False, choices=['message', 'warning', 'error'], default='message')
-argsParser.add_argument(u'--brief', u'-b', action = 'store', dest = 'title', required = False)
-argsParser.add_argument(u'content', action = 'store')
-args = argsParser.parse_args()
-print args
+#notification = '{notification: "%s"}'% (sys.argv[1])
+def notify(notification):
+	f = CreateFile(r'\\.\mailslot\notificationCenter', GENERIC_WRITE, FILE_SHARE_READ, None, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, None)
+	WriteFile(f, notification)
+	f.Close()
+
 def makeNotification(args):
 	backgroundColors = dict()
 	backgroundColors['warning'] = '#FFFF00'
@@ -20,9 +19,12 @@ def makeNotification(args):
 	notificationStr += ', {background: "%s"}' % (backgroundColors[args.notificationType])
 	notificationStr +='}'
 	return notificationStr
-	
-notification = makeNotification(args)
-#notification = '{notification: "%s"}'% (sys.argv[1])
-f = CreateFile(r'\\.\mailslot\notificationCenter', GENERIC_WRITE, FILE_SHARE_READ, None, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, None)
-WriteFile(f, notification)
-f.Close()
+
+if __name__ == '__main__':
+	argsParser = ArgumentParser(u'send notifications')
+	#argsParser.add_argument(u'--content', action = 'store', dest='content', default='')
+	argsParser.add_argument(u'--type', u'-t', action = 'store', dest='notificationType', required = False, choices=['message', 'warning', 'error'], default='message')
+	argsParser.add_argument(u'--brief', u'-b', action = 'store', dest = 'title', required = False)
+	argsParser.add_argument(u'content', action = 'store')
+	args = argsParser.parse_args()
+	notify(makeNotification(args))

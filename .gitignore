@@ -3,3 +3,8 @@ python/.sendNotification.py.swp
 python/notificationParser.pyc
 python/scopeParsers.pyc
 python/session.vim
+python/.utils.py.swp
+python/.watchMe.pyw.swp
+python/notificationCenter.pyw
+python/sendNotification.pyc
+python/utils.pyc
