@@ -9,7 +9,7 @@ def runCmd(cmd, echo = False, staging = False):
 		print cmd
 	if True == staging:
 		return (True, "", "")
-	pipe = sp.Popen(cmd, shell=True, stdin=sp.PIPE, stderr=sp.PIPE, stdout = sp.PIPE)
+	pipe = sp.Popen(cmd.encode('cp936'), shell=True, stdin=sp.PIPE, stderr=sp.PIPE, stdout = sp.PIPE)
 	stdout, stderr = pipe.communicate()
 	ret = pipe.returncode
 	return (ret == 0, stdout, stderr)

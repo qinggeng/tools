@@ -6,6 +6,7 @@ from collections import namedtuple
 import utils
 kTimerID = 400
 secondsPattern = re.compile(ur'\s*\d+\s*')
+
 class AlarmSetter(wx.Frame):
 	def __init__(self):
 		wx.Frame.__init__(self, parent = None, title = u'定时通知配置')
@@ -26,7 +27,7 @@ class AlarmSetter(wx.Frame):
 		self.btn = btn
 		self.timer = wx.Timer(self, kTimerID);
 		self.Bind(wx.EVT_TIMER, self.onTimer)
-		self.messageInputBox.SetValue('hello')
+		self.messageInputBox.SetValue(u'测试')
 		self.timeInputBox.SetValue('1')
 	def onGoBtn(self, ev):
 		msg = self.messageInputBox.GetValue()
@@ -36,16 +37,14 @@ class AlarmSetter(wx.Frame):
 		if None == secondsPattern.match(countDown):
 			return
 		seconds = int(countDown)
-		print seconds
 		self.messageInputBox.Disable()
 		self.timeInputBox.Disable()
 		self.btn.Disable()
 		self.timer.Start(1 * 1000, oneShot = False)
 	def onTimer(self, ev):
-		print 'timer'
 		if self.timeInputBox.GetValue() == u'0':
 			NotifyArgs = namedtuple('NotifyArgs', [u'content', u'title', u'notificationType']);
-			utils.runCmd(u'sendNotification.py "%s"' % self.messageInputBox.GetValue())
+			utils.runCmd(u'sendNotification.py "{0}"'.format(self.messageInputBox.GetValue()))
 			self.timer.Stop()
 			self.messageInputBox.Enable()
 			self.timeInputBox.Enable()
@@ -56,7 +55,8 @@ class AlarmSetter(wx.Frame):
 			seconds = max(0, seconds - 1)
 			self.timeInputBox.SetValue(str(seconds))
 if __name__ == '__main__':
-	app = wx.App(redirect = False)
+	#app = wx.App(redirect = False)
+	app = wx.App()
 	a = AlarmSetter()
 	a.Show()
 	app.MainLoop()

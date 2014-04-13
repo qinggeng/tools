@@ -4,3 +4,5 @@
 notificationCenter: 加入通知源，通知标题的显示和布局设计
 [done] notificationCenter: 加入通知的自动换行
 notificationParser: 加入url的property
+2014年4月13日
+为ItemGrid添加数据通知：swap，disposed，close
