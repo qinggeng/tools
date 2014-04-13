@@ -9,3 +9,6 @@ python/notificationCenter.pyw
 python/sendNotification.pyc
 python/utils.pyc
 python/.itemGrid.py.swp
+*.bak
+*.wxg
+python/alarmSetting.pyc
