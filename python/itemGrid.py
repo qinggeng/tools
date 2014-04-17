@@ -46,11 +46,6 @@ class ItemGrid(wx.ScrolledWindow):
 			name = wx.PanelNameStr):
 		wx.ScrolledWindow.__init__(self, parent, id, pos, size, style, name)
 		self.SetBackgroundColour('#FFFFFF')
-		self.itemCount = None
-		self.itemDesiredHeight = None
-		self.prepareItemPanel = None
-		self.disposeItemPanel = None
-		self.willSwap = None
 		self.columnWidth = 200
 		self.minimumItemHeight = 80
 		self.horizontalMargin = 1
@@ -69,6 +64,12 @@ class ItemGrid(wx.ScrolledWindow):
 		self.Bind(wx.EVT_SCROLLWIN_LINEDOWN, self.onScrollLineDown)
 		dt = ItemDropTarget(self)
 		self.SetDropTarget(dt)
+		"""data callbacks"""
+		self.itemCount = None
+		self.itemDesiredHeight = None
+		self.prepareItemPanel = None
+		self.disposeItemPanel = None
+		self.willSwap = None
 	
 	def refresh(self):
 		viewportWidth, viewportHeight = self.GetSize()

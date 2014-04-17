@@ -12,3 +12,6 @@ python/.itemGrid.py.swp
 *.bak
 *.wxg
 python/alarmSetting.pyc
+python/.alarmData.py.swp
+python/.Reminder.pyw.swp
+python/itemGrid.pyc

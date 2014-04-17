@@ -1,9 +1,12 @@
 # -*- coding: gbk -*-
 from wx import *
 from itemGrid import ItemGrid
+kIconHeight = 16
 def loadBitmapFromPNGFile(path, bitmapSize):
 	img = wx.Image(path)
 	img.LoadFile(path, wx.BITMAP_TYPE_PNG)
+	factor = 2.4
+	img = img.Resize((bitmapSize[0] * factor, bitmapSize[1] * factor), (-20, -20))
 	img = img.Scale(bitmapSize[0], bitmapSize[1])
 	return wx.BitmapFromImage(img)
 
@@ -34,24 +37,35 @@ class Reminder(Frame):
 		mainSizer.Add(poolPanel, proportion = 1, flag = EXPAND | ALL)
 		poolSizer = BoxSizer(VERTICAL)
 		poolToolsPanel = Panel(poolPanel)
-		poolToolsPanel.SetSize((0, 24))
+		poolToolsPanel.SetSize((0, kIconHeight))
 		poolPanel.SetSizer(poolSizer)
 		poolSizer.Add(poolToolsPanel, proportion = 0, flag = EXPAND | LEFT | RIGHT)
 		self.initializePoolTools(poolToolsPanel)
-		poolSizer.Add((0, 1))
+		line = StaticLine(poolPanel)
+		line.SetBackgroundColour('#FF0000');
+		poolSizer.Add(line, proportion = 0, flag = EXPAND | LEFT | RIGHT)
+		#poolSizer.Add((0, 1))
 		alarmsGrid = ItemGrid(poolPanel)
 		poolSizer.Add(alarmsGrid, proportion = 1, flag = EXPAND | ALL)
 
-		poolPanel.SetBackgroundColour('#C0C0C0')
+		#poolPanel.SetBackgroundColour('#C0C0C0')
+		poolPanel.SetBackgroundColour('#FFFFFF')
 		self.Layout()
 	
 	def initializePoolTools(self, toolsPanel):
 		p = toolsPanel
 		sz = BoxSizer(HORIZONTAL)
 		p.SetSizer(sz)
+		createBtn = BitmapButton(p, style = 0)
+		createBtn.SetSize((kIconHeight, kIconHeight))
+		createBtn.SetBackgroundColour('#FFFFFF')
+		createBtn.SetBitmapLabel(loadBitmapFromPNGFile(u'appbar.add.png', (kIconHeight, kIconHeight)))
+		sz.Add(createBtn, flag = SHAPED)
+		sz.Add((2, 2))
 		filterBtn = BitmapButton(p, style = 0)
-		filterBtn.SetSize((24, 24))
-		filterBtn.SetBitmapLabel(loadBitmapFromPNGFile(u'appbar.filter.png', (24, 24)))
+		filterBtn.SetSize((kIconHeight, kIconHeight))
+		filterBtn.SetBackgroundColour('#FFFFFF')
+		filterBtn.SetBitmapLabel(loadBitmapFromPNGFile(u'appbar.filter.png', (kIconHeight, kIconHeight)))
 		sz.Add(filterBtn, flag = SHAPED)
 		pass
 		
