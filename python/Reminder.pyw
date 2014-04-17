@@ -14,8 +14,15 @@ class Reminder(Frame):
 	def __init__(self):
 		Frame.__init__(self, None)
 		self.SetTitle(u'提醒和倒计时')
+		self.loadAlarms()
 		self.initialLayout()
 		self.SetBackgroundColour('#E0E0E0')
+	def loadAlarms(self):
+		self.alarms = []
+		self.displayedAlarms = []
+
+	def presentAlarm(self, alarm, panel):
+		pass
 	def initialLayout(self):
 		sz = BoxSizer(VERTICAL)
 		self.SetSizer(sz)
@@ -44,11 +51,9 @@ class Reminder(Frame):
 		line = StaticLine(poolPanel)
 		line.SetBackgroundColour('#FF0000');
 		poolSizer.Add(line, proportion = 0, flag = EXPAND | LEFT | RIGHT)
-		#poolSizer.Add((0, 1))
 		alarmsGrid = ItemGrid(poolPanel)
 		poolSizer.Add(alarmsGrid, proportion = 1, flag = EXPAND | ALL)
 
-		#poolPanel.SetBackgroundColour('#C0C0C0')
 		poolPanel.SetBackgroundColour('#FFFFFF')
 		self.Layout()
 	
@@ -60,6 +65,7 @@ class Reminder(Frame):
 		createBtn.SetSize((kIconHeight, kIconHeight))
 		createBtn.SetBackgroundColour('#FFFFFF')
 		createBtn.SetBitmapLabel(loadBitmapFromPNGFile(u'appbar.add.png', (kIconHeight, kIconHeight)))
+		createBtn.Bind(EVT_BUTTON, self.createNewAlarm)
 		sz.Add(createBtn, flag = SHAPED)
 		sz.Add((2, 2))
 		filterBtn = BitmapButton(p, style = 0)
@@ -67,6 +73,8 @@ class Reminder(Frame):
 		filterBtn.SetBackgroundColour('#FFFFFF')
 		filterBtn.SetBitmapLabel(loadBitmapFromPNGFile(u'appbar.filter.png', (kIconHeight, kIconHeight)))
 		sz.Add(filterBtn, flag = SHAPED)
+
+	def createNewAlarm(self, ev):
 		pass
 		
 if __name__ == '__main__':

@@ -6,3 +6,11 @@ notificationCenter: 加入通知源，通知标题的显示和布局设计
 notificationParser: 加入url的property
 2014年4月13日
 为ItemGrid添加数据通知：swap，disposed，close
+2014年4月18日
+Reminder.py 添加新建闹钟的功能
+Reminder.py 读入和保存闹钟
+Reminder.py 实现闹钟面板工具栏
+Reminder.py 实现单闹钟运行面板
+Reminder.py 实现闹钟面板
+Reminder.py 实现拖曳添加闹钟
+Reminder.py 实现闹钟记录
