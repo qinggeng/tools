@@ -7,7 +7,7 @@ class Alarm():
 		self.alarmTime = None
 		self.brief = u""
 		self.content = u""
-		self.countDown = None
+		self.countDown = 0
 		self.alarmType = u"alarm"
 def newAlarm(dateTime, brief, content):
 	a = Alarm()

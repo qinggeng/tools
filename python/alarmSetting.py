@@ -127,7 +127,7 @@ class AlarmSetting(wx.Panel):
 		self.detailedEdit.SetValue(value.detail)
 		if value.alarmType == 'countDown':
 			self.onCountDownRadioButton(None)
-		else if value.alarmType == 'alarm':
+		elif value.alarmType == 'alarm':
 			self.onAlarmRadioButton(None)
 		self.repeatCheck.SetValue(value.isRepeat)
 
