@@ -94,8 +94,8 @@ class AlarmsPanel(wx.Panel):
 		t = timerCtrl.GetValue(as_wxTimeSpan = True)
 		t -= wx.TimeSpan.Seconds(1)
 		if t.GetSeconds() == 0:
+			utils.runCmd(u'sendNotification.py "{0}"'.format(alarm.brief))
 			panel.Destroy()
-			utils.runCmd(u'sendNotification.py "{0}"'.format(alarms.brief))
 		else:
 			timerCtrl.SetValue(t)
 			stillAlive = True
@@ -161,7 +161,6 @@ class Reminder(Frame):
 		alarmsGrid.itemDesiredHeight = self.alarmPanelHeight
 		alarmsGrid.prepareItemPanel = self.displayAlarmPanel
 		self.Layout()
-		alarmsGrid.refresh()
 		self.Bind(wx.EVT_CLOSE, self.onDestory)
 	
 	def onDestory(self, ev):
@@ -193,6 +192,10 @@ class Reminder(Frame):
 		self.alarms.append(newAlarm)
 		self.displayedAlarms.append(newAlarm)
 		self.alarmsGrid.refresh()
+
+	def SetSize(self, size):
+		Frame.SetSize(self, size)
+		self.alarmsGrid.refresh()
 	
 	def alarmsCount(self):
 		return len(self.displayedAlarms)
@@ -200,6 +203,8 @@ class Reminder(Frame):
 		return 100
 	def displayAlarmPanel(self, panel, itemIndex):
 		d = self.displayedAlarms[itemIndex]
+		print 'item', itemIndex
+		print d.brief
 		sz = wx.BoxSizer(wx.VERTICAL)
 		panel.SetSizer(sz)
 		briefText = wx.StaticText(panel)
