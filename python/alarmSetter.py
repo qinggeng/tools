@@ -4,39 +4,6 @@ from wx._controls import *
 from wx.lib.masked.timectrl import TimeCtrl
 from alarmSetting import AlarmSetting
 from alarmData import Alarm
-class AlarmSetter(wx.Panel):
-	def __init__(self, parent, data = Alarm()):
-		spacing = 5
-		wx.Panel.__init__(self, parent)
-		vsz = wx.BoxSizer(wx.VERTICAL)
-		sz = wx.BoxSizer(wx.HORIZONTAL)
-		self.SetSizer(vsz)
-		vsz.Add(sz)
-		rbtn = wx.RadioButton(self)
-		rbtn.SetLabel(u"定时")
-		datePicker = DatePickerCtrl(self)
-		timePicker = TimeCtrl(self)
-		sz.Add((spacing, -1))
-		vsz = wx.BoxSizer(wx.VERTICAL)
-		sz.Add(vsz, proportion = 0, flag = wx.EXPAND | wx.TOP | wx.BOTTOM)
-		vsz.Add(rbtn, proportion = 1, flag = wx.ALIGN_CENTER_VERTICAL)
-		sz.Add((spacing, -1), flag = wx.ALIGN_CENTER_VERTICAL)
-		sz.Add(datePicker, proportion = 0, flag = wx.ALIGN_LEFT)
-		sz.Add((spacing, -1))
-		sz.Add(timePicker, flag = wx.ALIGN_RIGHT)
-		sz = wx.BoxSizer(wx.HORIZONTAL)
-		vsz = self.GetSizer()
-		vsz.Add(sz)
-		rbtn = wx.RadioButton(self)
-		rbtn.SetLabel(u"倒计时")
-		vsz = wx.BoxSizer(wx.VERTICAL)
-		sz.Add((spacing, -1))
-		sz.Add(vsz, proportion = 0, flag = wx.EXPAND | wx.TOP | wx.BOTTOM)
-		vsz.Add(rbtn, proportion = 1, flag = wx.ALIGN_CENTER_VERTICAL)
-		cb = TimeCtrl(self, fmt24hr = True)
-		sz.Add((spacing, -1))
-		sz.Add(cb, proportion = 0, flag = wx.EXPAND | wx.LEFT | wx.RIGHT)
-		self.Layout()
 
 class AlarmSettingDialog(wx.Dialog):
 	def __init__(self, paent, data = Alarm()):
@@ -60,19 +27,43 @@ class AlarmSettingDialog(wx.Dialog):
 		btnOK.Bind(wx.EVT_BUTTON, self.onOk)
 		btnCancel.Bind(wx.EVT_BUTTON, self.onCancel)
 		self.data = data
+		self.settingPanel = a
+		self.updateControls()
+	def updateControls(self):
+		d = self.data
+		a = self.settingPanel
+		a.briefEdit.SetValue(d.brief)
+		a.detailedEdit.SetValue(d.content)
+		if d.alarmTime != None:
+			dt = wx.DateTime()
+			a.datePicker.SetValue(dt.ParseDateTime(d.alarmTime))
+		a.countDownTimePicker.SetValue(wx.TimeSpan.Seconds(d.countDown))
+		a.repeatCheck.SetValue(d.repeat)
+		if d.alarmType == u"alarm":
+			a.onAlarmRadioButton(None)
+		elif d.alarmType == u"count down":
+			a.onCountDownRadioButton(None)
+
+	def updateData(self):
+		d = Alarm()
+		a = self.settingPanel
+		d.brief = a.briefEdit.GetValue()
+		d.content = a.detailedEdit.GetValue()
+		d.alarmTime = str(a.datePicker.GetValue())
+		d.countDown = a.countDownTimePicker.GetValue(as_wxTimeSpan = True).GetSeconds()
+		if a.alarmRadio.GetValue() == True:
+			d.alarmType = u"alarm"
+		elif a.countDownRadio.GetValue() == True:
+			d.alarmType = u"count down"
+		d.repeat = a.repeatCheck.GetValue()
+		self.data = d
 	def onOk(self, ev):
+		self.updateData()
 		self.EndModal(wx.ID_OK)
 	def onCancel(self, ev):
 		self.EndModal(wx.ID_CANCEL)
 if __name__ == '__main__':
 	app = wx.App(redirect = False)
-	#f = wx.Frame(None)
-	#sz = wx.BoxSizer(wx.VERTICAL)
-	#f.SetSizer(sz)
-	#a = AlarmSetting(f)
-	#sz.Add(a, proportion = 1, flag = wx.EXPAND)
-	#f.Layout()
 	d = AlarmSettingDialog(None)
 	d.ShowModal()
-	#f.Show()
 	app.MainLoop()

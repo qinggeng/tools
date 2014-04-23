@@ -30,7 +30,7 @@ class AlarmSetting(wx.Panel):
 		self.datePicker = wx.DatePickerCtrl(self.panel_3, wx.ID_ANY)
 		self.clockPicker = TimeCtrl(self.panel_3, wx.ID_ANY)
 		self.countDownRadio = wx.RadioButton(self.panel_3, wx.ID_ANY, _(u"\u5012\u8ba1\u65f6"))
-		self.countDownTimePicker = TimeCtrl(self.panel_3, wx.ID_ANY)
+		self.countDownTimePicker = TimeCtrl(self.panel_3, wx.ID_ANY, fmt24hr = True)
 		self.repeatCheck = wx.CheckBox(self.panel_3, wx.ID_ANY, _(u"\u91cd\u590d\u4f7f\u7528"))
 
 		self.__set_properties()

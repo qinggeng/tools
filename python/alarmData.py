@@ -9,6 +9,7 @@ class Alarm():
 		self.content = u""
 		self.countDown = 0
 		self.alarmType = u"alarm"
+		self.repeat = False
 def newAlarm(dateTime, brief, content):
 	a = Alarm()
 	a.alarmTime = time
