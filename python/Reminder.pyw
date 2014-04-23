@@ -203,13 +203,29 @@ class Reminder(Frame):
 		return 100
 	def displayAlarmPanel(self, panel, itemIndex):
 		d = self.displayedAlarms[itemIndex]
-		print 'item', itemIndex
-		print d.brief
 		sz = wx.BoxSizer(wx.VERTICAL)
 		panel.SetSizer(sz)
-		briefText = wx.StaticText(panel)
-		sz.Add(briefText, proportion = 0, flag = wx.EXPAND | wx.LEFT | wx.RIGHT)
+		vsz = BoxSizer(HORIZONTAL)
+		hsz = BoxSizer(VERTICAL)
+		briefText = wx.StaticText(panel, style = ALIGN_CENTER_VERTICAL)
 		briefText.SetLabel(d.brief)
+		vsz.Add(hsz, proportion = 0, flag = wx.EXPAND | BOTTOM | TOP)
+		hsz.Add(briefText, proportion = 1, flag = SHAPED | ALIGN_CENTER_VERTICAL)
+		closeBtn = BitmapButton(panel, style = 0)
+		closeBtn.SetSize((kIconHeight, kIconHeight))
+		closeBtn.SetBitmapLabel(loadBitmapFromPNGFile(u'appbar.close.png', (kIconHeight, kIconHeight)))
+		closeBtn.SetBackgroundColour('#FFFFFF')
+
+		editBtn = BitmapButton(panel, style = 0)
+		editBtn.SetSize((kIconHeight, kIconHeight))
+		editBtn.SetBitmapLabel(loadBitmapFromPNGFile(u'appbar.edit.png', (kIconHeight, kIconHeight)))
+		editBtn.SetBackgroundColour('#FFFFFF')
+
+		vsz.Add((5, 0), proportion = 1, flag = EXPAND | LEFT | RIGHT)
+		vsz.Add(editBtn, proportion = 0, flag = SHAPED | ALIGN_RIGHT)
+		vsz.Add((8, 0))
+		vsz.Add(closeBtn, proportion = 0, flag = SHAPED | ALIGN_RIGHT)
+		sz.Add(vsz, proportion = 0, flag = EXPAND| LEFT | RIGHT)
 		sz.Add((0, 5))
 		timeText = wx.StaticText(panel)
 		sz.Add(timeText, proportion = 0, flag = wx.EXPAND | wx.LEFT | wx.RIGHT)
@@ -217,7 +233,33 @@ class Reminder(Frame):
 			timeText.SetLabel(u'At %s' %(str(d.alarmTime), ))
 		elif d.alarmType == u'count down':
 			timeText.SetLabel(u'After %s' % (str(wx.TimeSpan.Seconds(d.countDown)), ))
+
+		closeBtn.Bind(EVT_BUTTON, functools.partial(self.deleteAlarm, panel, d))
+		editBtn.Bind(EVT_BUTTON, functools.partial(self.editAlarm, briefText, timeText, d))
 		panel.Layout()
+
+	def deleteAlarm(self, panel, alarm, delEvent):
+		index = self.displayedAlarms.index(alarm)
+		self.displayedAlarms.remove(alarm)
+		self.alarms.remove(alarm)
+		panel.Destroy()
+		self.alarmsGrid.itemDeleted(index)
+
+	def editAlarm(self, briefText, timeText, alarm, editEvent):
+		dlg = AlarmSettingDialog(self, alarm)
+		if dlg.ShowModal() == ID_OK:
+			d = dlg.data
+			alarm.brief = d.brief
+			alarm.content = d.content
+			alarm.alarmType = d.alarmType
+			alarm.alarmTime = d.alarmTime
+			alarm.countDown = d.countDown
+			briefText.SetLabel(alarm.brief)
+			if alarm.alarmType == u'alarm':
+				timeText.SetLabel(u'At %s' %(str(alarm.alarmTime), ))
+			elif alarm.alarmType == u'count down':
+				timeText.SetLabel(u'After %s' % (str(wx.TimeSpan.Seconds(alarm.countDown)), ))
+
 		
 if __name__ == '__main__':
 	a = wx.App(redirect = False)

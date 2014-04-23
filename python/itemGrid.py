@@ -152,6 +152,16 @@ class ItemGrid(wx.ScrolledWindow):
 		right = min(scrollWidth, x + viewportWidth * 2)
 		return (left, right)
 
+	def itemDeleted(self, index):
+		for traits, itemIndex in zip(self.livedPanels, range(len(self.livedPanels))):
+			if traits.index == index:
+				index = itemIndex
+				break
+		for traits in self.livedPanels[itemIndex:]:
+			traits.panel.Destroy()
+		self.livedPanels = self.livedPanels[:itemIndex]
+		self.updateGrid(0)
+
 	def updateGrid(self, offset):
 		if len(self.livedPanels) == 0:
 			return

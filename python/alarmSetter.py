@@ -36,12 +36,18 @@ class AlarmSettingDialog(wx.Dialog):
 		a.detailedEdit.SetValue(d.content)
 		if d.alarmTime != None:
 			dt = wx.DateTime()
-			a.datePicker.SetValue(dt.ParseDateTime(d.alarmTime))
+			dt.ParseDateTime(d.alarmTime)
+			a.datePicker.SetValue(dt)
+			a.clockPicker.SetValue(dt)
 		a.countDownTimePicker.SetValue(wx.TimeSpan.Seconds(d.countDown))
 		a.repeatCheck.SetValue(d.repeat)
 		if d.alarmType == u"alarm":
+			a.alarmRadio.SetValue(True)
+			a.countDownRadio.SetValue(False)
 			a.onAlarmRadioButton(None)
 		elif d.alarmType == u"count down":
+			a.alarmRadio.SetValue(False)
+			a.countDownRadio.SetValue(True)
 			a.onCountDownRadioButton(None)
 
 	def updateData(self):
@@ -49,12 +55,12 @@ class AlarmSettingDialog(wx.Dialog):
 		a = self.settingPanel
 		d.brief = a.briefEdit.GetValue()
 		d.content = a.detailedEdit.GetValue()
-		d.alarmTime = str(a.datePicker.GetValue())
-		d.countDown = a.countDownTimePicker.GetValue(as_wxTimeSpan = True).GetSeconds()
 		if a.alarmRadio.GetValue() == True:
 			d.alarmType = u"alarm"
+			d.alarmTime = a.datePicker.GetValue().Format('%m/%d/%Y ') + a.clockPicker.GetValue(as_wxDateTime = True).Format('%H:%M:%S')
 		elif a.countDownRadio.GetValue() == True:
 			d.alarmType = u"count down"
+			d.countDown = a.countDownTimePicker.GetValue(as_wxTimeSpan = True).GetSeconds()
 		d.repeat = a.repeatCheck.GetValue()
 		self.data = d
 	def onOk(self, ev):
