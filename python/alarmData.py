@@ -2,6 +2,12 @@
 import pickle
 import functools
 from collections import namedtuple
+class Activity():
+	def __init__(self):
+		self.name = u""
+		self.content = u""
+		self.begin = None
+		self.end = None
 class Alarm():
 	def __init__(self):
 		self.alarmTime = None

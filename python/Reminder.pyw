@@ -7,6 +7,7 @@ from alarmSetter import AlarmSettingDialog
 from wx.lib.masked.timectrl import TimeCtrl
 import functools
 import utils
+import alarmData
 kIconHeight = 16
 def loadBitmapFromPNGFile(path, bitmapSize):
 	img = wx.Image(path)
@@ -27,6 +28,16 @@ class AlarmsPanel(wx.Panel):
 		self.timer = wx.Timer(self, 100)
 		self.Bind(wx.EVT_TIMER, self.onTimer)
 		self.timer.Start(1 * 1000, oneShot = False)
+		self.livedActivities = {}
+		self.finishedActivities = []
+		self.Bind(EVT_CLOSE, self.onClose)
+
+	def onClose(self, ev):
+		print "close event"
+		f = open(DateTime.Now().Format(u'activities.%Y-%m-%d-%H-%M-%S.dat'), 'w')
+		pickle.dump(self.finishedActivities, f)
+		f.close()
+		ev.Skip()
 
 	def SetSize(self, sz):
 		self.GetSizer().SetMinSize(sz)
@@ -80,6 +91,12 @@ class AlarmsPanel(wx.Panel):
 		sz.Add(panel, proportion = 0, flag = wx.EXPAND | wx.LEFT | wx.RIGHT)
 		self.Layout()
 		self.livedAlarms.append(functools.partial(self.updateCountDown, panel, timeCtrl, alarm))
+		if alarm.alarmType == 'count down':
+			newAcitvity = alarmData.Activity()
+			newAcitvity.name = alarm.brief
+			newAcitvity.content = alarm.content
+			newAcitvity.begin = DateTime.Now().Format('%m/%d/%Y %H:%M:%S')
+			self.livedActivities[alarm] = newAcitvity
 
 	def onTimer(self, ev):
 		updatedPanels = []
@@ -96,6 +113,11 @@ class AlarmsPanel(wx.Panel):
 		if t.GetSeconds() == 0:
 			utils.runCmd(u'sendNotification.py "{0}"'.format(alarm.brief))
 			panel.Destroy()
+			if alarm in self.livedActivities:
+				activity = self.livedActivities[alarm]
+				activity.end = DateTime.Now().Format('%m/%d/%Y %H:%M:%S')
+				self.finishedActivities.append(activity)
+				self.livedActivities.pop(alarm)
 		else:
 			timerCtrl.SetValue(t)
 			stillAlive = True
@@ -162,26 +184,46 @@ class Reminder(Frame):
 		alarmsGrid.prepareItemPanel = self.displayAlarmPanel
 		self.Layout()
 		self.Bind(wx.EVT_CLOSE, self.onDestory)
+		self.alarmPanel = alarmsPanel
 	
 	def onDestory(self, ev):
 		pickle.dump(self.alarms, open(u'alarms.dat', 'w'))
+		self.alarmPanel.Close()
 		ev.Skip()
+
 	def initializePoolTools(self, toolsPanel):
 		p = toolsPanel
 		sz = BoxSizer(HORIZONTAL)
 		p.SetSizer(sz)
+		sz.Add((4, 2))
 		createBtn = BitmapButton(p, style = 0)
 		createBtn.SetSize((kIconHeight, kIconHeight))
 		createBtn.SetBackgroundColour('#FFFFFF')
 		createBtn.SetBitmapLabel(loadBitmapFromPNGFile(u'appbar.add.png', (kIconHeight, kIconHeight)))
 		createBtn.Bind(EVT_BUTTON, self.createNewAlarm)
 		sz.Add(createBtn, flag = SHAPED)
-		sz.Add((2, 2))
+		sz.Add((4, 2))
 		filterBtn = BitmapButton(p, style = 0)
 		filterBtn.SetSize((kIconHeight, kIconHeight))
 		filterBtn.SetBackgroundColour('#FFFFFF')
 		filterBtn.SetBitmapLabel(loadBitmapFromPNGFile(u'appbar.filter.png', (kIconHeight, kIconHeight)))
 		sz.Add(filterBtn, flag = SHAPED)
+
+
+		plotButton = BitmapButton(p, style = 0)
+		plotButton.SetSize((kIconHeight, kIconHeight))
+		plotButton.SetBitmapLabel(loadBitmapFromPNGFile(u'appbar.graph.line.png', (kIconHeight, kIconHeight)))
+		plotButton.SetBackgroundColour('#FFFFFF')
+		sz.Add(plotButton, proportion = 1, flag = SHAPED | ALIGN_RIGHT)
+		sz.Add((4, 2))
+		configButton = BitmapButton(p, style = 0)
+		configButton.SetSize((kIconHeight, kIconHeight))
+		configButton.SetBitmapLabel(loadBitmapFromPNGFile(u'appbar.cog.png', (kIconHeight, kIconHeight)))
+		configButton.SetBackgroundColour('#FFFFFF')
+		sz.Add(configButton, proportion = 1, flag = SHAPED | ALIGN_RIGHT)
+
+	def onConfigBtn(self, ev):
+		pass
 
 	def createNewAlarm(self, ev):
 		dlg = AlarmSettingDialog(self)
@@ -199,8 +241,10 @@ class Reminder(Frame):
 	
 	def alarmsCount(self):
 		return len(self.displayedAlarms)
+
 	def alarmPanelHeight(self, itemIndex, maximumWidth, maximumHeight):
 		return 100
+
 	def displayAlarmPanel(self, panel, itemIndex):
 		d = self.displayedAlarms[itemIndex]
 		sz = wx.BoxSizer(wx.VERTICAL)
