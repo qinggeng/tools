@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from wx import *
 import matplotlib
+import matplotlib.ticker
 matplotlib.use('WX')
 from matplotlib.backends.backend_wx import FigureCanvasWx as FigureCanvas
 from matplotlib.figure import Figure
@@ -16,6 +17,9 @@ def makeBorder(window, sizer, left, right, top, bottom):
 	hBorderSizer.Add(sizer, proportion = 1, flag = EXPAND)
 	return sizer
 
+def utc2Date(value, labelIndex):
+	return (DateTime.Today() + TimeSpan(labelIndex * 24)).Format(ur'%Y-%m-%d')
+	return value
 class ActivitiesViewer(Frame):
 	kMargin = 4
 	kMarginLeft = kMargin
@@ -39,6 +43,8 @@ class ActivitiesViewer(Frame):
 		self.figure = Figure()
 		f = self.figure
 		self.axes = f.add_subplot(111)
+		formatter = matplotlib.ticker.FuncFormatter(utc2Date)
+		self.axes.xaxis.set_major_formatter(formatter)
 
 		canvas = FigureCanvas(self, -1, self.figure)
 		self.canvas = canvas
