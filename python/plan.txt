@@ -14,3 +14,5 @@ Reminder.py 实现单闹钟运行面板
 Reminder.py 实现闹钟面板
 Reminder.py 实现拖曳添加闹钟
 Reminder.py 实现闹钟记录
+2014年5月7日
+activitiesViewer.pyw 显示事务的矩形和对应的标注
