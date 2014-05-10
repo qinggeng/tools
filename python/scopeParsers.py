@@ -15,6 +15,8 @@ scopeEndPattern = re.compile(r'\s*\}\s*', re.U)
 namePattern = re.compile(r'[a-zA-Z_]\w*', re.U)
 colonPattern = re.compile(r'\s*:\s*', re.U)
 commaPattern = re.compile(r'\s*,\s*', re.U)
+stringPattern = re.compile(r'"([^\\|"]|\\.)*"', re.U)
+
 
 class SymbolsIterator(object):
 	def __init__(self, symbols):
@@ -125,7 +127,6 @@ SCOPE_NAME = functools.partial(
 		[NAME, COLON],
 		setScopeName)
 
-stringPattern = re.compile(r'"([^\\|"]|\\.)*"', re.U)
 
 def setVariable(name, symbols, value):
 	symbols[name] = value
