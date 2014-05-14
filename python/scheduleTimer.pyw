@@ -2,6 +2,7 @@
 from wx import *
 import wxTools
 import re
+import functools
 from wx.lib.masked.timectrl import TimeCtrl
 kMarginDefault = 2
 kMarginTop = kMarginDefault
@@ -47,12 +48,54 @@ class ScheduleElementEditor(Panel):
 		clauseSizer.Add(refSelection, proportion = 1, flag = EXPAND)
 		scheduleSelection = ComboBox(self, style = CB_DROPDOWN | CB_READONLY)
 		clauseSizer.Add(scheduleSelection, proportion = 1, flag = EXPAND)
+		startPointSelection = ComboBox(self, style = CB_DROPDOWN | CB_READONLY, choices = ['开始之后', '结束之后'])
+		clauseSizer.Add(startPointSelection, proportion = 1, flag = EXPAND)
 		datePicker = DatePickerCtrl(self)
 		clauseSizer.Add(datePicker, proportion = 1, flag = EXPAND)
 		clockPicker = TimeCtrl(self)
 		clauseSizer.Add(clockPicker, proportion = 1, flag = EXPAND)
 		configSizer.Add(clauseSizer, proportion = 0, flag = EXPAND | LEFT | RIGHT)
+
+		beginSelection.Bind(EVT_COMBOBOX, functools.partial(self.onBeginSelection, beginSelection))
+		refSelection.Bind(EVT_COMBOBOX, self.onRefSelection)
+
+		self.beginSelection = beginSelection
+		self.refSelection = refSelection
+		self.scheduleSelection = scheduleSelection
+		self.startPointSelection  = startPointSelection
+		self.datePicker = datePicker
+		self.clockPicker = clockPicker
+		self.beginSelection.SetSelection(1)
+		self.onBeginSelection(beginSelection, None)
+
+	def onRefSelection(self, ev):
+		self.refSelection.Show()
+		selIndex = self.refSelection.GetCurrentSelection()
+		if selIndex == 0:
+			self.scheduleSelection.Hide()
+			self.startPointSelection.Hide()
+			self.datePicker.Show()
+			self.clockPicker.Show()
+		elif selIndex == 1:
+			self.scheduleSelection.Show()
+			self.startPointSelection.Show()
+			self.datePicker.Hide()
+			self.clockPicker.Show()
+		self.Layout()
 		
+	def onBeginSelection(self, combo, ev):
+		selIndex = combo.GetCurrentSelection()
+		if selIndex == 1:
+			self.refSelection.Hide()
+			self.scheduleSelection.Hide()
+			self.startPointSelection.Hide()
+			self.datePicker.Hide()
+			self.clockPicker.Hide()
+		else:
+			self.refSelection.Show()
+			#self.scheduleSelection.Show()
+			#self.startPointSelection.Show()
+		self.Layout()
 		
 
 class ScheduleElementDlg(Dialog):
