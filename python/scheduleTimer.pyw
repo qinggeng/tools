@@ -433,42 +433,25 @@ class ScheduleTimer(Frame):
 		mainSizer.Add(buttonsSizer, flag = EXPAND | LEFT | RIGHT, proportion = 0)
 		line = StaticLine(self, style = LI_HORIZONTAL)
 		mainSizer.Add(line, proportion = 0, flag = EXPAND | LEFT | RIGHT)
-		#self.canvas = NavCanvas(self, ID_ANY, (0, 0))
-		self.canvas = FloatCanvas.FloatCanvas(self, ID_ANY, (0, 0))
-		mainSizer.Add(self.canvas, proportion = 1, flag = EXPAND)
-		self.canvas.SetBackgroundColour("black")
 		powerBtn.Bind(EVT_BUTTON, self.onEditSecheduleElement)
+		self.layoutMainPanel(mainSizer)
 		self.schedules = []
-		"""
-		draw testing objects
-		"""
-		#t = FloatCanvas.ScaledTextBox("""你好, 世界 
-#Hello world""", (0, 0), 12)
-		#t.Move((-400, 0))
-		#bottomLeft, topRight = t.BoundingBox
-		#print bottomLeft
-		#print topRight
-		#rect = FloatCanvas.Rectangle((bottomLeft[0], bottomLeft[1]), (topRight[0] - bottomLeft[0], topRight[1] - bottomLeft[1]), FillColor = 'yellow', LineColor = None)
-		#self.canvas.AddObject(rect)
-		#self.canvas.AddObject(t)
-		#t = FloatCanvas.ScaledTextBox("""你好, 世界 
-#Hello world""", (0, 16), 12)
-		#t = FloatCanvas.ScaledTextBox("""你好, 世界 
-#Hello world""", (topRight[0], topRight[1] - bottomLeft[1]), 12)
-		#self.canvas.AddObject(t)
+		self.Maximize()
 		self.Layout()
 		self.makeSchedules(testSchedules())
-		return
-		g = self.makeProgressHint('test progress\n00: 00: 00', progressFactor = 1.2, color = 'yellow')
-		self.canvas.AddObject(g)
-		#self.canvas.Zoom(0.9)
-		zeroPoint = self.canvas.PixelToWorld((0, 0))
-		g.Move(zeroPoint)
-		bl, tr = g.ObjectList[1].BoundingBox
-		lineBegin = (tr[0], bl[1])
-		lineEnd = (tr[0], bl[1] - (tr[1] - bl[1]) - 100)
-		l = FloatCanvas.Line([lineBegin, lineEnd], LineColor = 'red', LineStyle = 'DotDash')
-		self.canvas.AddObject(l)
+
+	def layoutMainPanel(self, mainSizer):
+		mainPanelSizer = wx.BoxSizer(wx.HORIZONTAL)
+		self.canvas = FloatCanvas.FloatCanvas(self, ID_ANY, (0, 0))
+		mainPanelSizer.Add(self.canvas, proportion = 1, flag = EXPAND)
+		self.canvas.SetBackgroundColour("black")
+		mainSizer.Add(mainPanelSizer, proportion = 1, flag = EXPAND)
+		line = StaticLine(self, style = wx.LI_VERTICAL)
+		mainPanelSizer.Add(line, proportion = 0, flag = wx.EXPAND | wx.TOP | wx.BOTTOM)
+		controlPanel = wx.Panel(self)
+		controlPanel.SetSize((300, 300))
+		mainPanelSizer.Add(controlPanel, proportion = 0, flag = wx.EXPAND | wx.TOP | wx.BOTTOM)
+
 
 	def makeSchedules(self, schedules):
 		figures = {}
