@@ -11,6 +11,10 @@ import os, sys, os.path
 import re
 import functools
 import pickle
+def constantTime(timeStr):
+	dt = DateTime()
+	dt.ParseFormat(timeStr, u'%Y %m %d %H:%M:%S')
+	return dt
 def makeBorder(window, sizer, left, right, top, bottom):
 	vBorderSizer = BoxSizer(VERTICAL)
 	hBorderSizer = BoxSizer(HORIZONTAL)
@@ -23,8 +27,15 @@ def makeBorder(window, sizer, left, right, top, bottom):
 	return sizer
 
 def utc2Date(value, labelIndex):
+	dt = DateTime()
+	dt.SetTimeT(value)
+	return dt.Format('%Y-%m-%d\n%H:%M:%S')
 	return (DateTime.Today() + TimeSpan(labelIndex * 24)).Format(ur'%Y-%m-%d')
 	return value
+
+class SettingDialog(Dialog):
+	def __init__(self, parent):
+		Dialog.__init__(self, parent)
 class ActivitiesViewer(Frame):
 	kMargin = 4
 	kMarginLeft = kMargin
@@ -58,15 +69,14 @@ class ActivitiesViewer(Frame):
 		self.Maximize(True)
 
 		self.axes = f.add_subplot(111)
-		formatter = matplotlib.ticker.FuncFormatter(utc2Date)
-		#self.axes.xaxis.set_major_formatter(formatter)
 		self.drawPlot(self.axes)
 		lowerBoundDateTime = DateTime()
 		#lowerBoundDateTime.ParseFormat(u'1970 1 1 00:00:00', u'%Y %m %d %H:%M:%S')
-		lowerBoundDateTime.ParseFormat(u'2014 5 3 12:00:00', u'%Y %m %d %H:%M:%S')
+		lowerBoundDateTime.ParseFormat(u'2014 5 3 00:00:00', u'%Y %m %d %H:%M:%S')
 		self.defaultLowerBoundDateTime = lowerBoundDateTime
 		self.activityLowerBound = self.getDefaultLowerBound
-		self.activityUpperBound = DateTime.Now
+		#self.activityUpperBound = DateTime.Now
+		self.activityUpperBound = functools.partial(constantTime, u'2014 5 3 12:00:00')
 
 	def getDefaultLowerBound(self):
 		return self.defaultLowerBoundDateTime
@@ -81,7 +91,16 @@ class ActivitiesViewer(Frame):
 		sz.Add(refreshBtn)
 		sz.Add((0, ActivitiesViewer.kToolbarSpacing))
 		refreshBtn.Bind(EVT_BUTTON, self.onRefreshButton)
+		configButton = wxTools.makeBitmapButton(
+			tb,
+			ActivitiesViewer.kToolbarButtonSize,
+			u'appbar.cog.png')
+		sz.Add(configButton)
+		configButton.Bind(EVT_BUTTON, self.onConfigButton)
 		self.Bind(EVT_PAINT, self.OnPaint)
+
+	def onConfigButton(self, ev):
+		pass
 
 	def onRefreshButton(self, ev):
 		#walk through current folder, enumerate activities file
@@ -103,7 +122,7 @@ class ActivitiesViewer(Frame):
 		a = self.activities
 		ax = self.axes
 		ax.clear()
-		activitiesNames = set()
+		activityNames = []
 		lb = 0xFFFFFFFF
 		ub = 0
 		for activity in a:
@@ -111,15 +130,27 @@ class ActivitiesViewer(Frame):
 			endTime = DateTime()
 			beginTime.ParseFormat(activity.begin, '%m/%d/%Y %H:%M:%S')
 			endTime.ParseFormat(activity.end, '%m/%d/%Y %H:%M:%S')
-			print beginTime, endTime
 			last = endTime - beginTime
 			dt = DateTime()
 			dt.SetTimeT(beginTime.GetTicks())
-			ax.plot([beginTime.GetTicks(), endTime.GetTicks()], [1, 1])
+			if activity.name in activityNames:
+				base = activityNames.index(activity.name)
+			else:
+				base = len(activityNames)
+				activityNames.append(activity.name)
+			#print activity.name, base
+			#ax.plot([beginTime.GetTicks(), endTime.GetTicks(), endTime.GetTicks(), beginTime.GetTicks(), beginTime.GetTicks()], [base + 1, base + 1, base + 1.1, base + 1.1, base + 1], color = 'blue')
+			ax.bar(beginTime.GetTicks(), 0.1, endTime.GetTicks() - beginTime.GetTicks(), base + 1, label = activity.name)
+			b = ax.annotate((endTime - beginTime).Format(u'%H:%M:%S'), xy = (beginTime.GetTicks(), base + 1), xycoords = 'data')
+			#print dir(b.get_fontproperties())
+			#print b.get_fontproperties().get_size()
+			#print type(b)
 			lb = min(beginTime.GetTicks(), lb)
 			ub = max(endTime.GetTicks(), ub)
-		print lb, ub
-		ax.axis([lb, ub, 0, 3])
+		#print lb, ub
+		ax.axis([lb - 50, ub + 50, 0, 3])
+		formatter = matplotlib.ticker.FuncFormatter(utc2Date)
+		ax.xaxis.set_major_formatter(formatter)
 		self.Refresh()
 
 	def enumerateActivities(self, lower, upper, placeHolder, currentFolder, names):
@@ -150,8 +181,6 @@ class ActivitiesViewer(Frame):
 
 	def drawPlot(self, ax):
 		ax.plot([1, 2], [1, 1])
-		#ax.broken_barh([(1, 0.5), (2, 0.5)], [(1, 0.1), (1, 0.1)])
-		#ax.axis([0, 5, 0, 5])
 		annotation = ax.annotate(u'活动测试', xy=(2., 1.), xycoords='data', xytext=(1., 1.), textcoords='data')
 		"""
 		print dir(annotation)

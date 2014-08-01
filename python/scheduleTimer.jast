@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<productType>
+    <appointments>
+        <appointments/>
+        <id>5ac82048-25c6-49c6-ad9e-991f3b042b2d</id>
+    </appointments>
+    <backlog>
+        <backlogitems>
+            <backlogitem>
+                <acceptance></acceptance>
+                <description>启动一个议程的目的是，开始一个会议。&#xD;
+</description>
+                <epic>Epic</epic>
+                <estimation>0.0</estimation>
+                <id>9a126684-2efc-469f-ac5a-17cbff11ab66</id>
+                <priority>0</priority>
+                <requirement></requirement>
+                <tasks/>
+                <topic>启动一个议程</topic>
+            </backlogitem>
+        </backlogitems>
+        <id>4cb36aaf-6cbd-4fae-b20c-7f0f0f8c1070</id>
+        <productowner></productowner>
+        <updateEstimation>false</updateEstimation>
+        <useMuSCoW>false</useMuSCoW>
+    </backlog>
+    <costs>
+        <categories/>
+        <currency>EUR</currency>
+        <id>b3545b66-0488-4568-a28c-d1f74ab3d693</id>
+        <planing/>
+    </costs>
+    <description>这是一个会议议程提示和记录工具。&#xD;
+在会议开始前，用户使用这个工具来规划一个会议的议程。&#xD;
+会议进行中，用户使用这个工具来监视会议的进程。在有必要的情况下，可以方便地增、删会议的议程。&#xD;
+会议结束后，用户用这个工具来总结会议议程进行的情况。&#xD;
+&#xD;
+小明：时间官&#xD;
+场景1：会议前的议程规划&#xD;
+小明拿到一份会议的议程计划，打开软件，根据计划编制了议程规划，并保存。&#xD;
+这么做的目的是为了在之后的会议中能使用这份规划监视和控制会议的进程。&#xD;
+场景1.1&#xD;
+小明添加了一个总的会议议程，设定好计划用时后，又给这个总议程添加了&#xD;
+场景2：会议中的议程监视&#xD;
+小明来到了会场。在主持人宣布会议开始的时候同时启动了议规划。随着会议的推进。小明时不时地把议程规划中的某一项设为“开始”或者“停止”，直到整个会议结束。&#xD;
+&#xD;
+场景3：会议中的议程修改&#xD;
+在会议的进行中，由于情况的变化，出现了新的议程，于是小明把新的议程启动了，并在议程进行中编辑这个议程的名称之类的属性，便于理解和事后统计。&#xD;
+&#xD;
+场景4：会议后的议程总结&#xD;
+会议结束了，总的来说，会议基本按照议程进行了，但有些议程延长了，有些议程缩短了，有的取消了，有的增加了，有的提前了，有的滞后了。还是有不少需要改进的地方。&#xD;
+小明作为一个时间官，自觉有义务整理出这些需要改进的地方病提出自己的意见和建议。于是他打开了软件，调取了本次会议的议程记录。&#xD;
+和之前的议程规划做了个比较，得出了自己的报告，提交给了会议组织方。</description>
+    <id>0</id>
+    <impediments>
+        <id>12203a0e-926d-4f09-8e57-e8a05a2a8073</id>
+        <impedimentitems/>
+    </impediments>
+    <sprints/>
+    <team>
+        <id>d59ceaec-ab43-4f6f-a1a1-32eb250dd7cd</id>
+        <scrumMaster></scrumMaster>
+        <members/>
+    </team>
+    <title>Scheduler</title>
+    <unit>HOURS</unit>
+    <webUsers>
+        <id>54b44ed1-0477-430a-8f76-307e033abc41</id>
+        <users/>
+    </webUsers>
+</productType>

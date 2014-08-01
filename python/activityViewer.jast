@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<productType>
+    <appointments>
+        <appointments/>
+        <id>b8c76abe-45e7-49a3-b291-8d64a0646b47</id>
+    </appointments>
+    <backlog>
+        <backlogitems>
+            <backlogitem>
+                <acceptance></acceptance>
+                <description></description>
+                <epic>Epic</epic>
+                <estimation>0.0</estimation>
+                <id>60195e59-5cec-45da-83a7-862c494234bc</id>
+                <priority>0</priority>
+                <requirement></requirement>
+                <tasks/>
+                <topic>display activity artists</topic>
+            </backlogitem>
+            <backlogitem>
+                <acceptance></acceptance>
+                <description></description>
+                <epic>Epic</epic>
+                <estimation>0.0</estimation>
+                <id>4fa17fe5-d70e-43a9-8dea-6c4a4b2248ca</id>
+                <priority>0</priority>
+                <requirement></requirement>
+                <tasks/>
+                <topic>draw activity time as a bar</topic>
+            </backlogitem>
+            <backlogitem>
+                <acceptance></acceptance>
+                <description></description>
+                <epic>Epic</epic>
+                <estimation>0.0</estimation>
+                <id>8b0654c3-a8f9-4ea3-b40a-2b9950f65cde</id>
+                <priority>0</priority>
+                <requirement></requirement>
+                <tasks/>
+                <topic>select time range</topic>
+            </backlogitem>
+        </backlogitems>
+        <id>db978cd4-73f8-465a-a94f-2de0e58c05a1</id>
+        <productowner></productowner>
+        <updateEstimation>false</updateEstimation>
+        <useMuSCoW>false</useMuSCoW>
+    </backlog>
+    <costs>
+        <categories/>
+        <currency>EUR</currency>
+        <id>095880c7-a0bb-46f4-9b7e-5da5c76aef64</id>
+        <planing/>
+    </costs>
+    <description></description>
+    <id>0</id>
+    <impediments>
+        <id>d906c68e-84c9-47c2-88d5-a847749fd8cd</id>
+        <impedimentitems/>
+    </impediments>
+    <sprints/>
+    <team>
+        <id>de811feb-09f9-4cc4-89d9-8f13248724a9</id>
+        <scrumMaster></scrumMaster>
+        <members/>
+    </team>
+    <title>Activity Viewer</title>
+    <unit>HOURS</unit>
+    <webUsers>
+        <id>d065e233-3f7c-48f6-a2c5-41228e844fa5</id>
+        <users/>
+    </webUsers>
+</productType>
