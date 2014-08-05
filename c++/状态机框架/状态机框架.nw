@@ -1,0 +1,893 @@
+\newcommand{\q}[1]{{\color{red} {\LARGE Q:} \textbf{#1}}}
+\newcommand{\asn}[1]{{\color{blue} {\LARGE A:} \textbf{#1}}\\
+}
+\section{概念和设计}
+@
+\textbf{状态机}是一个用于描述系统行为的模型。其包含有有限个的状态和变换。
+@
+一个简单的状态不包含子状态。
+但可以包含数据、进入/离开行为和不同的事件。
+@
+进入/离开的行为可以被设置。在进入和退出这个状态时被执行而不区分因何而进入/退出。
+@
+一个状态可以有不引发进入/离开行为的变换，这种变换被称为内部变换。
+@
+一个状态可以把事件标记为“保留”。
+这意味着，当前状态不处理的事件将被保留着，直到一个处理这些事件的状态被激活，并处理这些事件。
+@
+变换是状态切换的开关，由事件引发。
+@
+变换可以附加动作和守护条件。
+动作在变换发生时被执行，而守护条件则是一个返回值为布尔类型的操作，当守护条件为假时，变换将不被触发。
+@
+初始状态是状态机的第一个状态。它没有真正的出口，也没有可触发的变换。
+@
+复合状态是包含一个或多个区域的状态。复合状态有自己的状态和区域集。
+@
+子状态机是一个被作为状态加入到其他状态机中的状态机。同一个子状态机可以被反复插入多次。
+@
+正交区域是复合状态或者子状态机的组成部分。每个正交区域的状态和变换集合相互之间没有交集。
+@
+结束状态是一个伪状态，这个状态之后的状态机将不再处理任何事件。
+@
+出口状态是一个伪状态，
+这个状态引发其所在的复合状态/子状态机的离开行为，
+并终止其所在的复合状态/子状态机中的各个区域。
+@
+入口状态是一个伪状态，
+它把一个来自外部的变换连接到了一个内部变换上。从入口进入一个复合状态的过程是：
+\begin{inparaenum}[1)]
+\item 外部变换触发复合状态的进入动作，
+\item 触发入口连接的内部变换。
+\end{inparaenum}
+入口状态一次只连接一个内部变换。即，触发入口状态，最多只引发符合状态/子状态机的一个区域的变换。
+@
+显式进入是这样一种变换：来自外部状态，终点是某个子状态，只引发一次变换。显式退出与显示进入相反。
+@
+{\color{red}从概念上来说，入口是非常“直观”的，就是在状态机/正交区域上开的一个口子，
+使进入这个状态机/正交区域的路径，除了经初始变换（即OnEntry）到达第一个状态以外，
+还有经入口所连接的变换（可以视为另一个OnEntry）到达另一个状态。显式进入则更加粗暴，
+甚至不经过父状态的初始变换而直接进入到某个正交区域的某个状态。出口/显式离开则与之相反}
+@
+分支是一种变换：来自外部状态，终点是两个以上不同区域的子状态。不是终点的其他区域以初始状态激活。
+@
+\textbf{浅历史}是状态机所处的上一个状态，一个状态机最多只能有一个浅历史。
+@
+\textbf{深历史}是浅历史的递归版。
+@
+目标为历史状态的变换等价于到具体的历史状态的变换。
+@
+\textbf{完成/匿名变换}是不需要事件，会被自动触发的变换。
+\subsection{设计}
+\subsubsection{Brain Storm}
+@
+\q{如何处理匿名事件？}
+@
+\asn{不处理，这又不是实时状态机}
+@
+\q{终点是新的状态还是自身？}
+@
+\asn{终点是自身的，是内部变换引起的，反之是外不变换}
+@
+\q{变换如何支持显式进入？}
+@
+\asn{变换有TargetMaker，在TargetMaker中显式的指定一个状态中某个区域的初始状态即可}
+@
+\q{变换如何处理分支?}
+@
+\asn{同样是通过变换的TargetMaker，指定终点的各个区域的初始状态}
+@
+\q{如何触发进入和退出动作？}
+@
+\asn{在TargetMakerzhong实现}
+@
+\q{如何处理保留事件？}
+@
+\asn{一个容器内的所有状态共享一个保留事件队列，每次容器中的状态改变时，
+由状态的父状态/容器使新状态处理保留的事件}
+@
+\q{内变换，外变换和不变换如何区分？}
+@
+\asn{通过变换的返回值区分，内变换返回源状态，外变换返回目标状态，不变换返回空状态}
+@
+@
+\q{如何检测状态机是否需要“保留（defer）”事件？}
+@
+\asn{由状态机决定是否需要保留事件}
+@
+\q{如何为状态添加子状态？}
+@
+\asn{有两种容器可以容纳状态：状态机和区域。状态本身不能容纳状态。
+容器是一个复合结构，即容器下还可以有容器。}
+@
+\q{事件如何被处理？}
+@
+\asn{环境将事件发送给容器，容器驱动状态处理事件，
+检查状态处理事件返回的新状态，如果新状态为空，则意味着状态未处理事件，
+否则，以新状态替换旧状态。}
+@
+\q{如何定义一系列的状态变换？}
+@
+\asn{一个简单状态由它所处理的事件、事件的变换来定义。
+一个复合状态除了简单状态的定义，还有它的所有的状态容器的定义。
+对变换的定义，包括变换的起点，动作，守护条件和终点。
+其中，对终点的定义又分为简单终点，分支终点，入口终点，显式进入终点。
+其中，简单终点就是直接创建一个状态。而分支终点则是创建一个复合状态，
+并为复合状态中的两个或以上的正交区域设置初始状态。
+入口终点则是首先初始化一个复合状态，
+随后对状态的某个正交区域进行非默认的初始变换，进入某个状态。}
+@
+事件有统一的基类。不同的事件有不同的tag。事件不存在继承关系。
+@
+如何处理变换？
+@
+谁来发起变换？
+@
+怎么确定变换的终点？
+@
+进入和退出并不一定会被引发。
+@
+如果是显式进入，父状态的进入就不会被引发。
+@
+如果是显式退出，父状态的退出也不会被引发。
+@
+每个状态都有保留事件队列？
+@
+状态有processEvent函数
+@
+状态机有eventLoop函数
+@
+一次eventLoop至多处理一个事件
+@
+要有timer event
+@
+可能需要idle event
+@
+简单状态的事件处理
+\NewList
+\begin{easylist}
+& 在变换表中查找事件对应的变换
+& 触发变换
+& 将变换的结果作为事件的结果返回
+\end{easylist}
+@
+变换的触发过程：
+\NewList
+\begin{easylist}
+& 执行守护条件
+&& 不通过，不变换
+& 如果是内部变换
+&& 不触发起点的离开
+&& 否则触发起点的离开
+& 执行变换动作
+& 执行变换终点
+& 返回变换终点的状态
+\end{easylist}
+<<变换的执行过程(伪代码)>>=
+StatePtr makeTransition(StatePtr source)
+{
+	if (guardian && false == guardian())
+	{
+		return source;
+	}
+	if (isInternal_)
+	{
+		transitionAction();
+		return source;
+	}
+	source.onExit();
+	transitionAction();
+	return makeTransitionTarget();
+}
+@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+@
+<<对变换的修饰（伪代码）>>=
+transition.markAsInternal();
+transition.markTarget(targetMaker);
+transition.markSource(sourceState);
+transition.markAction(action);
+transition.markGuardian(guradian);
+@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+保留事件应该在一个状态的进入结束之后立即处理。
+但由于显式进入的存在，状态的进入并不一定会被执行，
+因此这实际暗示着一个状态的初始化过程是：
+\NewList
+\begin{easylist}
+& 构造
+& 根据条件执行可选的"进入"
+& 处理保留事件
+\end{easylist}
+但这又带来一个问题：
+保留事件的处理应该是自动的，但进入的执行又是可选的，
+如果不希望程序员在每一个状态变换中都需要手工执行以下保留事件的处理，
+那么保留事件的处理就应该在其他地方被执行。
+@
+保留事件的处理应该在变换执行结束后，
+如果状态容器发现变换返回的状态与原状态不同，
+那么就处理保留事件。
+@
+处理保留事件的思路是，用同一个队列保存未处理的保留事件和已处理的保留事件。
+已处理的保留事件放置在队列的最末尾。每次移除队列的第一个事件并处理这个事件。
+如果这个事件继续保留，则加入队列尾部，并记录继续保留的事件的个数。
+如果被处理了，那么，有两种情况：引发了内部变换，因为状态没有切换，
+所以已经保留的事件不需要再次处理；而在外部变换的情况下，
+则需要从头判断保留事件的去留，因此重置整个队列（通过把已保留事件数置0）。
+<<处理保留事件(伪代码)>>=
+StatePtr newState = transition.makeTransition(source);
+if (newState != source)
+{
+	theState = newState;
+	int handledEventCount = 0;
+	while(handledEventCount < retainedEvents.size())
+	{
+		auto event = retainedEvents[0];
+		retainedEvents.pop();
+		StatePtr target = theState->processEvent(event);
+		if (target == NULL)
+		{
+			//事件未处理
+			handledEventCount++;
+		}
+		else if (target == theState)
+		{
+			//事件处理了，但引发的是内部变换
+		}
+		else
+		{
+			handledEventCount = 0;
+			retainedEvents.pop();
+			theState = newState;
+		}
+	}
+}
+@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+<<状态机框架(伪代码)>>=
+struct EventBase
+{
+	virtual ~EventBase(){};
+};
+struct Event
+{
+};
+struct Region
+{
+};
+struct Transition
+{
+	typedef boost::function<void()> Action;
+	typedef boost::function<bool()> Guardian;
+	Action action;
+	Guardian guardian;
+};
+
+struct State
+{
+	typedef boost::function<void(State&)> Action;
+	void processEvent(const EventBase& ev);
+	void addTransition(EventTag, Transition);
+	void enter()
+	{
+		if (onEnter)
+		{
+			onEnter();
+		}
+	}
+	void exit()
+	{
+		if (onExit)
+		{
+			onExit();
+		}
+	}
+	vector<Region> regions;
+	Action onEnter;
+	Action onExit;
+};
+@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+@
+“状态容器”这个概念需要澄清一下。
+\begin{inparaenum}[1)]
+\item 同一个容器中的状态有同一个保留事件队列，
+\item 同一个容器中的状态有相同的保留事件设置。
+\end{inparaenum}
+@
+每个状态容器的初始化包括容器的构造，初始变换的设定。
+在这样的观念下，进入一个分支的终点就变成了，
+\begin{inparaenum}[1)]
+\item 构造终点状态
+\item 替换其中需要替换的正交区域的初始变换
+\item 执行终点状态的初始变换
+\end{inparaenum}
+\subsection{应用的case}
+\subsubsection{如何定义一个事件}
+@
+事件的定义很简单，只需要派生一下即可。
+\subsubsection{如何定义一个变换}
+@
+一个变换分四部分：
+\begin{inparaenum}[1)]
+\item 起点、
+\item 终点、
+\item 守护条件、
+\item 动作。
+\end{inparaenum}
+其中，起点在变换被加入到状态中时确定，守护条件和动作则可以在变换发生前确定。
+比较复杂的是终点的确定。
+变换的终点分好几种，因此在实现中，
+终点的形式作以回调函数的方式被开放出来了。
+但这仅仅是推迟了问题，
+并没有真正解决如何以统一的形式去表述这几种终点形式。
+另外，整个框架的动态化设计，必然会带来两种不同的构造方式：类构造和原型构造。
+这又使得终点的定义更加复杂——哪种终点，基于哪种构造方式。
+@
+我们先来看终点的形式，有这么几种：
+\begin{inparaenum}[1)]
+\item 简单状态；
+\item 状态入口；
+\item 显式进入;
+\item 分支。
+\end{inparaenum}
+对简单状态，终点的过程是构造一个新状态，先后调用该状态的入口动作和默认初始变换。
+对状态入口，则是构造一个新的状态，然后设定该状态的入口动作和默认初始变换后调用之。
+对显式进入，新状态没有入口动作和默认初始变换，
+而是直接初始化新状态中除了需要显式进入的正交区域以外的其他正交区域，
+随后通过指定的变换，直接进入该正交区域中所期望的状态。
+对分支进入，可以认为是同时显式进入多个正交区域。
+@
+在状态图中，一个复合状态可以有多个入口、有多种进入形式等等。
+但是，在我们的框架中，一个简单状态由其事件和对应的变换定义；
+一个复合事件由其进入动作、初始变换和每个正交区域中的初始变换和首个状态来定义。
+因此，在我们的框架中，
+通过不同的入口，不同的进入动作进入的，不会是同一个状态。
+概因不同入口，不同的进入状态导致了不同的初始状态、不同正交区域的初始状态。
+@
+所以，在实现上，就不需要考虑一个状态有多个入口等情况。
+而是换一种方式：强化状态的构造器，使构造一个状态的过程可以被深度定制，
+可以指定一个状态的初始变换、进入动作、退出动作、初始变换等。
+更进一步，对变换也有构造器，可以定制变换终点的动作。
+然后，对正交区域也有构造器，也可以定制其初始变换和初始状态。
+顺着这样的思路，状态的构造器需要有：
+\begin{inparaenum}
+\item 进入、离开动作的设定；
+\item 事件和对应的变换的设定；
+\item 每个正交区域的构造器。
+\end{inparaenum}
+而正交区域的构造器则要有：
+\begin{inparaenum}
+\item 初始变换。
+\end{inparaenum}
+对变换的构造器，需要：
+\begin{inparaenum}
+\item 变换动作；
+\item 守护条件；
+\item 终点状态的构造器。
+\end{inparaenum}
+@
+这种互相递归的构造方式自然带了了一个问题：环引用。
+于是我们就必须讨论这些构造器的生命周期控制。
+@
+一个最明显的环引用就是状态的构造器和变换的构造器的环引用。
+状态构造器需要为状态设定事件和对应的变换，
+而变换的终点又是一个状态的构造器。
+这就带了了状态构造器---变换---状态构造器这种潜在的环引用。
+因此，这二者的生命周期控制必须解耦。
+@
+一般来说，常见解耦的方式有：统一的生命周期管理（俗称管挖不管埋）。
+也就是只管构造，只有在系统结束时才释放构造好的对象，
+这样各个对象之间都不存在生命周期的控制。但在长时间的程序运行中，
+这种管挖不管埋的行为造成了事实上的资源泄露。
+@
+不过，框架中状态构造器也可以不直接持有变换，而是一个变换构造器。
+变换由状态持有。状态被创建后生命周期就不受状态构造器的控制了。
+同时，由于变换持有的是终点状态的构造器，因此也不会直接或间接地持有其他变换,
+从而打破环引用。
+@
+还有一个问题，变换的构造器如何去获取一个状态的构造器？
+首先，必然不控制状态构造器的生命周期。
+@
+到这里，可以总结一下框架里面必须有的一些要点了：
+\NewList
+\begin{easylist}
+& 状态机
+& 状态
+& 正交区域
+& 事件
+& 变换
+& 构造器
+&& 状态构造器
+&& 正交区域构造器
+&& 变换构造器
+\end{easylist}
+\subsection{Q\&A}
+\subsubsection{关于继承构造状态}
+@
+\q{派生的状态的目的是？}
+@
+\asn{派生的状态的目的是：
+\begin{inparaenum}
+\item 设定初始、退出动作，
+\item 设定事件和对应的变换。
+\item 设定未经过初始变换的正交区域。
+\end{inparaenum}
+}
+@
+\q{派生状态机的目的？}
+@
+\asn{设定初始的变换。因为状态机是一个状态容器，
+两个相同状态的容器可以认为是等价的，
+而初始变换则决定了一个状态容器的初始状态。派生状态机的目的是定义状态机，
+定义一个状态机最重要的就是定义它的初始状态。
+所以，设定初始状态即可。}
+\subsubsection{关于TargetMaker}
+@
+\q{一个简单的TargetMaker？}
+@
+\asn{构造一个状态，执行状态的进入动作，对状态的正交区域执行初始变换。}
+@
+\q{EntryPoint的TargetMaker？}
+@
+\asn{构造一个状态，执行状态的进入动作，替换相应区域的初始变换，对所有正交区域执行初始变换。}
+@
+\q{显式进入的TargetMaker？}
+@
+\asn{构造一个状态，替换相应区域的初始变换，对所有正交区域执行初始变换。}
+@
+\q{Fork的TargetMaker？}
+@
+\asn{构造一个状态，指定其正交区域，对所有正交区域进行初始变换。}
+@
+\q{自变换的targetMaker？}
+@
+\asn{直接返回源状态。}
+\section{实现}
+<<状态机定义>>=
+struct Event
+{
+	typedef void(*EventID)();
+	virtual ~Event(){}
+	virtual EventID id() const = 0;
+	bool defering_;
+	bool defering()const{return defering_;}
+	Event& defering(bool val){defering_ = val; return *this;}
+};
+
+template <typename Derived>
+struct ConcreteEvent: Event
+{
+	static void idFunc(){Event* dummy = 0;}
+	static EventID eventId(){return &idFunc;}
+	EventID id() const { return &idFunc;}
+};
+
+struct State;
+struct Transition;
+typedef boost::shared_ptr<State> StatePtr;
+typedef boost::shared_ptr<Event> EventPtr;
+typedef std::deque<EventPtr> Events;
+typedef boost::shared_ptr<Events> EventsPtr;
+typedef boost::shared_ptr<Transition> TransitionPtr;
+typedef boost::function<void(EventPtr)> EventLifter;
+
+struct StateContainer
+{
+	typedef StateContainer Self;
+	StatePtr currentState_;
+	EventLifter liftingEvent_;
+	StatePtr currentState() const{return currentState_;}
+	EventsPtr retainedEvents_;
+	TransitionPtr initialTransition_;
+	Self& currentState(StatePtr newState);
+	void processRetainedEvents();
+	virtual void initialize();
+};
+typedef boost::shared_ptr<StateContainer> StateContainerPtr;
+
+struct Region: StateContainer
+{
+};
+
+struct EventDispatcher
+{
+	typedef std::vector<StateContainerPtr> StateContainers;
+	StateContainers stateContainers_;
+	EventLifter liftingEvent_;
+	StatePtr dispatchEvent(EventPtr pEvent);
+	void initRetainedEvents(EventsPtr events);
+};
+
+struct Transition
+{
+	typedef boost::function<StatePtr(StatePtr)> TargetMaker;
+	typedef boost::function<void(const EventPtr)> Action;
+	typedef boost::function<bool()> Guardian;
+	Guardian guardian_;
+	Action action;
+	TargetMaker makeTarget;
+	StatePtr makeTransition(StatePtr sourceState, const EventPtr pEvent)
+	{
+		if (guardian_ && false == guardian_() || NULL == makeTarget)
+		{
+			return StatePtr();
+		}
+		if (action)
+		{
+			action(pEvent);
+		}
+		return makeTarget(sourceState);
+	}
+};
+
+typedef boost::shared_ptr<Region> RegionPtr;
+
+struct State : EventDispatcher
+{
+	typedef boost::function<void()> Action;
+	typedef std::vector<RegionPtr> Regions;
+	typedef boost::unordered_map<Event::EventID, TransitionPtr> Transitions;
+	typedef boost::unordered_set<Event::EventID> DeferingEvents;
+	DeferingEvents deferingEvents_;
+	Transitions transitions_;
+	Action onEnter;
+	Action onExit;
+	TransitionPtr addTransition(TransitionPtr transition, Event::EventID id)
+	{
+		Transitions::iterator iter = transitions_.find(id);
+		if (iter != transitions_.end())
+		{
+			return TransitionPtr();
+		}
+		transitions_.insert(std::make_pair(id, transition));
+		return transition;
+	}
+
+	StatePtr processEvent(EventPtr event, StatePtr thisState)
+	{
+		StatePtr resultState = dispatchEvent(event);
+		Transitions::iterator transitionIterator = 
+			transitions_.find(event->id());
+		if (transitionIterator == transitions_.end())
+		{
+			if (deferingEvents_.count(event->id()) > 0)
+			{
+				event->defering(true);
+			}
+			return StatePtr();
+		}
+		StatePtr targetState = transitionIterator->second->makeTransition(thisState, event);
+		return targetState;
+	}
+};
+
+struct StateMachine : StateContainer
+{
+	StateMachine()
+	{
+		retainedEvents_ = boost::make_shared<Events>();
+		liftingEvents_ = boost::bind(&StateMachine::sendEvent, this, _1);
+	}
+	void sendEvent(EventPtr event)
+	{
+		event->defering(false);
+		StatePtr resultState = currentState()->processEvent(event, currentState());
+		if (NULL == resultState && event->defering())
+		{
+			retainedEvents_->push_back(event);
+		}
+		else if (currentState() != resultState)
+		{
+			currentState(resultState);
+		}
+	}
+};
+
+template<typename StateT>
+StatePtr simpleTarget(StatePtr)
+{
+	return boost::make_shared<StateT>();
+}
+template<typename TargetT, typename Fork1, typename Fork2>
+StatePtr forkTarget(StatePtr)
+{
+	StatePtr target = boost::make_shared<TargetT>();
+	return target;
+}
+
+
+typedef boost::function<void(StateContainerPtr)> StateContainerInitializer;
+typedef boost::function<TransitionPtr()> TransitionMaker;
+typedef boost::shared_ptr<TransitionMaker> TransitionMakerPtr;
+typedef boost::unordered_map<Event::EventID, TransitionMakerPtr>
+	TransitionMakers;
+typedef boost::function<StateContainerPtr()> StateContainerMaker;
+
+typedef boost::function<StatePtr()> StateMaker;
+
+<<StateContainer的实现>>
+<<EventDispatcher的实现>>
+StatePtr makeState(const TransitionMakers& transitionsDefinition, const StateContainerMaker); 
+typedef boost::function<void (StatePtr)> StateModifier;
+StatePtr makeTarget(
+	const StateMaker& maker, 
+	const StateModifier& modifer, 
+	StatePtr sourceTarget);
+StateContainerPtr replaceStateContainer(
+	int containerIndex, 
+	const StateContainerMaker& stateContainerMaker,
+	StatePtr theState);
+@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+<<EventDispatcher的实现>>=
+void EventDispatcher::initRetainedEvents(EventsPtr events)
+{
+	for(StateContainers::iterator iter = stateContainers_.begin();
+		iter != stateContainers_.end();
+		iter++)
+	{
+		StateContainerPtr stateContainer = *iter;
+		stateContainer->retainedEvents_ = events;
+		stateContainer->currentState()->initRetainedEvents(events);
+	}
+}
+
+StatePtr EventDispatcher::dispatchEvent(EventPtr pEvent)
+{
+	for (StateContainers::iterator iter = stateContainers_.begin();
+		 iter != stateContainers_.end();
+		 iter++)
+	{
+		StateContainerPtr container = *iter;
+		StatePtr newState = 
+			container->currentState()->processEvent(
+				pEvent, container->currentState());
+		if (newState == NULL)
+		{
+		}
+		else if (newState != container->currentState())
+		{
+			container->currentState(newState);
+			container->processRetainedEvents();
+			return newState;
+		}
+		else if (newState == container->currentState())
+		{
+			return newState;
+		}
+	}
+	return StatePtr();
+}
+@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+<<StateContainer的实现>>=
+StateContainer::Self& StateContainer::currentState(StatePtr newState)
+{
+	currentState_ = newState;
+	newState->liftingEvent_ = liftingEvent_;
+	newState->initRetainedEvents(retainedEvents_);
+	return *this;
+}
+
+void StateContainer::processRetainedEvents()
+{
+	int retainedCount = 0;
+	while(retainedCount < retainedEvents_->size())
+	{
+		EventPtr event = retainedEvents_->front();
+		retainedEvents_->pop_front();
+		event->defering(false);
+		StatePtr newState = currentState_->processEvent(event, currentState_);
+		if (newState == NULL && true == event->defering())
+		{
+			retainedEvents_->push_back(event);
+			retainedCount++;
+		}
+		else if (newState == currentState_)
+		{
+		}
+		else
+		{
+			retainedCount = 0;
+			currentState(newState);
+		}
+	}
+}
+
+void StateContainer::initialize()
+{
+	currentState(initialTransition_(StatePtr());
+}
+@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+<<状态机头文件依赖的头文件>>=
+#include <boost/shared_ptr.hpp>
+#include <boost/weak_ptr.hpp>
+#include <boost/function.hpp>
+#include <vector>
+#include <deque>
+#include <boost/unordered_map.hpp>
+#include <boost/unordered_set.hpp>
+#include <boost/make_shared.hpp>
+@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{单元测试}
+\subsubsection{定义一个状态机}
+<<状态机的单元测试>>=
+WIN32GUI_TEST(
+	UTC_HSM_Init,
+	UTC_HSM)
+{
+	struct Ev1: ConcreteEvent<Ev1>{};
+	struct Ev2: ConcreteEvent<Ev2>{};
+	struct S1: State
+	{
+		static StatePtr makeS2(StatePtr)
+		{
+			return boost::make_shared<S2>();
+		}
+		S1()
+		{
+			TransitionPtr trans(new Transition);
+			trans->makeTarget = makeS2;
+			addTransition(trans, Ev1::eventId());
+		}
+	};
+	struct S2: State
+	{
+		static StatePtr makeS1(StatePtr)
+		{
+			return boost::make_shared<S1>();
+		}
+		S2()
+		{
+			TransitionPtr trans(new Transition);
+			trans->makeTarget = makeS1;
+			addTransition(trans, Ev2::eventId());
+		}
+	};
+	struct MyMachine: StateMachine
+	{
+		
+		
+		MyMachine()
+		{
+			TransitionPtr pTransition = boost::make_shared<Transition>();
+			pTransition->makeTarget = S2::makeS1;
+			initialTransition_ = pTransition;
+		}
+	};
+
+/*
+	maker = make_shared<TargetMaker>();
+	*maker = SimpleTarget(StateMaker<S1>());
+	*maker = EntryPoint(StateMaker<S1>(), TransitionMaker(Action(), maker));
+	*maker = ExplicitEnter(StateMaker<S1>(), replaceContainer(1, RegionMaker(TransitionMaker(maker))));
+*/
+}
+@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{文件}
+\subsection{HSM.hpp}
+<<tangle source codes>>=
+tangleSource 状态机的头文件 $file HSM.hpp
+@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+<<状态机的头文件>>=
+#pragma once
+<<状态机头文件依赖的头文件>>
+<<状态机头文件中的宏定义>>
+<<状态机定义>>
+@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{utc\_HSM.cpp}
+<<tangle source codes>>=
+tangleSource 状态机的单元测试文件 $file utc_HSM.cpp
+@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+<<状态机的单元测试文件>>=
+#include "HSM.hpp"
+#include "win32gui_unit_test.hpp"
+#include <boost/make_shared.hpp>
+WIN32GUI_TEST(
+	UTC_HSM_Construct,
+	UTC_HSM)
+{
+	State s;
+}
+<<状态机的单元测试>>
+@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{action}
+<<action>>=
+<<tangle\_in\_linux>>
+<<weave>>
+@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{tangle}
+<<tangle\_in\_linux>>=
+fileName=状态机框架
+file=$fileName.nw
+ltx_file=$fileName.ltx
+log_file=$fileName.log
+function tangleSource 
+{
+	
+	notangle -R"$1" -t4 -L'#line %L "%F"%N' $2 | iconv -f utf-8 -t gbk > $3
+	astyle --style=ansi --mode=c $3 
+	iconv -f gbk -t utf-8 $3 > $3.utf-8
+}
+<<tangle source codes>>
+<<tangle\_windows\_part>>
+@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+<<tangle\_windows\_part>>=
+notangle -R"action\\_in\\_win" -t4 $file> action.bat
+@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+<<action\_in\_win>>=
+@echo off
+exit 0
+@echo on
+popd
+@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{weave}
+<<weave>>=
+noweave -x $file| \
+sed 's/\\usepackage{noweb}/\\usepackage[top=1.2in,bottom=1.2in,left=1.2in,right=1in]{geometry}&/g'| \
+sed 's/\\usepackage{noweb}/\\usepackage{fontspec, xunicode, xltxtra}&/g'| \
+sed 's/\\usepackage{noweb}/\\usepackage{listings}&/g'| \
+sed 's/\\usepackage{noweb}/\\usepackage[120, ampersand]{easylist}&/g'| \
+sed 's/\\usepackage{noweb}/\\usepackage{paralist}&/g'| \
+sed 's/\\usepackage{noweb}/\\usepackage{color}&/g'| \
+sed 's/\\usepackage{noweb}/\\usepackage{hyperref}&/g'| \
+sed 's/\\usepackage{noweb}/\\usepackage{underscore}&/g'| \
+sed 's/\\usepackage{noweb}/&\\noweboptions{longxref}/g'| \
+sed 's/\\usepackage{noweb}/&\\noweboptions{smallcode}/g'| \
+sed 's/\\usepackage{noweb}/&\\noweboptions{alphasubpage}/g'| \
+sed 's/\\usepackage{noweb}/&\\noweboptions{longchunks}/g'| \
+sed 's/\\usepackage{noweb}/&\\XeTeXlinebreaklocale "zh-cn"/g'| \
+sed 's/\\usepackage{noweb}/&\\pagecolor{grayyellow}/g'| \
+sed 's/\\usepackage{noweb}/&\\definecolor{grayyellow}{RGB}{255, 255, 200}/g'| \
+sed 's/\\usepackage{noweb}/&\\XeTeXlinebreakskip = 0pt plus 1pt minus 0.1pt/g'| \
+sed 's/\\usepackage{noweb}/&\\setmainfont[BoldFont={Adobe Heiti Std}]{Adobe Song Std}/g'| \
+sed 's/\\usepackage{noweb}/&\\setmonofont[Color=0000FF99]{Microsoft YaHei UI Light}/g'| \
+sed 's/\\usepackage{noweb}/\\usepackage{amsmath}&/g'| \
+sed 's/\\usepackage{noweb}/\\usepackage{amssymb}&/g'| \
+sed 's/\\begin{document}/&\\tableofcontents/g'| \
+sed 's/\\begin{document}/&\\setcounter{tocdepth}{7}/g'| \
+sed 's/\\documentclass/&[11pt]/g'|
+sed 's/    /  /g'> $ltx_file &2|iconv -f utf-8 -t gbk
+xelatex $ltx_file
+xelatex $ltx_file
+echo $ltx_file|sed 's/ltx$/aux/g'|xargs rm -rf
+echo $ltx_file|sed 's/ltx$/toc/g'|xargs rm -rf
+echo $ltx_file|sed 's/ltx$/out/g'|xargs rm -rf
+rm $ltx_file
+rm $aux_file
+rm $log_file
+@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+<<declare of literate programming>>=
+/*
+
+              *****************************************
+              *                                       *
+              *                注意事项               *
+              *                                       *
+              *****************************************
+
+你看到的这份源码文件不是直接生成的,而是使用noweb工具，从*.nw文件中将代码抽取出来组织而成的。
+因此请不要直接编辑这些源文件，否则它们会被*.nw文件中的内容覆盖掉。
+如果想了解如何使用noweb工具抽取代码和生成pdf文档，请联系huangyangkun@gmail.com。
+noweb是一个“文学编程（literate programming）”工具。
+关于文学编程: http://zh.wikipedia.org/wiki/%E6%96%87%E5%AD%A6%E7%BC%96%E7%A8%8B
+关于noweb: http://en.wikipedia.org/wiki/Noweb
+*/
+@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\newpage
+\section{代码块列表}
+\nowebchunks
