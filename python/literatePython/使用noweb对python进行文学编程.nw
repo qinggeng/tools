@@ -157,15 +157,17 @@ Forwarding是为了捕捉异常，并将异常的堆栈信息转化为nw文件�
 <<testhook>>=
 import sys
 import functools
-def onUnhandledExcept(oldHandler, type, value, traceback):
+import traceback
+def onUnhandledExcept(oldHandler, type, value, tb):
 	print '#####################################'
-	print type(traceback)
-	print dir(traceback)
-	print traceback
+	print type(tb)
+	print dir(tb)
+	print tb
 	print type
 	print value
+	print traceback.extract_tb(tb)
 	value.args = value.args + ('aaa',)
-	oldHandler(type, value, traceback)
+	oldHandler(type, value, tb)
 print sys.excepthook
 sys.excepthook = functools.partial(onUnhandledExcept, sys.excepthook)
 def bad():
@@ -267,8 +269,21 @@ def scan(srcPath):
 \end{inparaenum}
 <<替换异常打印的函数>>=
 def replaceStackTrace(nextHandler, type, value, traceback):
-	chunks = $$$
-
+	chunks = %1
+	if len(values.args) == 0:
+		resultDict = {}
+		resultDict["dictId"] = u"9D6B6AA1-92FC-453E-8B9A-91D0E02A17B1"
+		value.args = value.args +(resultDict, ) 
+	else:
+		resultDict = value.args[-1]
+	if type(resultDict) != type({}):
+		resultDict = {}
+		resultDict["dictId"] = u"9D6B6AA1-92FC-453E-8B9A-91D0E02A17B1"
+		value.args = value.args +(resultDict, ) 
+	if "dictId" not in resultDict or resultDict["dictId"] != u"9D6B6AA1-92FC-453E-8B9A-91D0E02A17B1":
+		resultDict = {}
+		resultDict["dictId"] = u"9D6B6AA1-92FC-453E-8B9A-91D0E02A17B1"
+		value.args = value.args +(resultDict, ) 
 	if None != nextHandler:
 		nextHandler(type, value, traceback)
 @
@@ -348,9 +363,9 @@ xelatex $ltx_file
 echo $ltx_file|sed 's/ltx$/aux/g'|xargs rm -rf
 echo $ltx_file|sed 's/ltx$/toc/g'|xargs rm -rf
 echo $ltx_file|sed 's/ltx$/out/g'|xargs rm -rf
-rm $ltx_file
-rm $aux_file
-rm $log_file
+rm -rf $ltx_file
+rm -rf $aux_file
+#rm -rf $log_file
 @
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 <<declare of literate programming>>=
