@@ -85,7 +85,6 @@ python的标准异常有args这个成员，是一个tuple，
 我们通过两次的比较，确认两次的堆栈信息是否一致。
 <<test.py>>=
 import traceback
-import traceback
 def foo():
 	raise Exception("an exception")
 
@@ -136,8 +135,150 @@ except Exception, e:
 & 代码在主动抛出异常时，应该调用模块提供的工具来提供真正的堆栈信息。
 & 扫描工具会改写源文件，自动在代码中将要抛出异常的地方插入生成堆栈信息的代码。
 \end{easylist}
+Forwarding是为了捕捉异常，并将异常的堆栈信息转化为nw文件中的文件信息。
+因此LineDirective需要一个nw文件和输出文件的对应表，这个对应表自然应该在tangle时生成。
+@
+可是，我们该如何最自然的去使用LineDirective这个模块呢？
+这首先要分析一下我们一般是如何使用一个python的脚本的。
+使用python的脚本有两种方式：
+\begin{inparaenum}[1)]
+\item 作为模块引入（import module），
+\item 直接执行。
+\end{inparaenum}
+在第一种情况下，脚本抛出的异常可能会，也可能不会被引入它的模块所处理，
+而第二种情况则必然不会被处理。
+我们当然希望，任何情况下，我们看到的异常的堆栈信息都已经对应好了。
+@
+2014年8月2日：万幸，python提供了sys.execepthook这个回掉接口，用于处理未捕捉的异常。
+不过这个文档还不是很明确，因此我还担心它在和其他IDE使用时，
+或者这个回掉被改写时，会是怎样的结果。
+不过不管怎么样，至少我找到了一个统一的入口来处理者系欸未处理的异常了。
+下面的代码是一个例子。
+<<testhook>>=
+import sys
+import functools
+def onUnhandledExcept(oldHandler, type, value, traceback):
+	print '#####################################'
+	print type(traceback)
+	print dir(traceback)
+	print traceback
+	print type
+	print value
+	value.args = value.args + ('aaa',)
+	oldHandler(type, value, traceback)
+print sys.excepthook
+sys.excepthook = functools.partial(onUnhandledExcept, sys.excepthook)
+def bad():
+	raise Exception('test', 'a tuple?')
+bad()
+@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+所以现在可以正式设计LineDirective了：
+\NewList
+\begin{easylist}
+& LineDirective和整个tangle过程紧密结合
+& LineDirective深度集成到生成的代码中
+& tangle的流程：
+&& 生成原始的py文件
+&& 用LineDirective扫描py文件，生成最终的py文件
+&&& 扫描py文件，建立nw-py的行对应信息
+&&& 用一个临时的py文件，试着import原始的py文件，以检测是否有语法错误
+&&& 如果有语法错误，输出错误，停止生成，如果没有，则生成最终的py文件
+&&&& LineDirective在最终的py文件中的头部添加一些内容，
+用于设置sys.excepthook
+\end{easylist}
+于是我们的tangle就需要：
+\NewList
+\begin{easylist}
+& tangle LineDirective
+& 定义一个shell函数，以对单个的py文件tangle
+&& tangle一个源文件，其中包含对应的line directive
+&& 用LineDirective扫描这个源文件，生成目标文件。
+&& 处理过程中的错误应该被以log的形式写文件，以备修正
+\end{easylist}
+<<LineDirective.py>>=
+import sys, re
+<<文件行转换器>>
+<<LineDirective Definition>>
+if __name__ == '__main__':
+	if (sys.argv) > 1:
+		scan(sys.argv[1])
+@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+<<文件行转换器>>=
+class Chunks:
+	def __init__(self):
+		self.chunkList = []
+	def insertChunk(self, srcLine, dstLine):
+		pos = self.seekInsertPos(dstLine)
+		self.chunkList.insert(pos, [srcLine, dstLine])
+	def seekInsertPos(self, dstLine):
+		arr = self.chunkList
+		if len(self.chunkList) == 0:
+			return -1
+		if arr[0][1] > dstLine:
+			return 0
+		if arr[-1][1] < dstLine:
+			return len(arr)
+		lb = 0
+		ub = len(self.chunkList)
+		while True:
+			if lb >= ub:
+				return lb
+			mid = lb + (ub - lb)/2
+			if dstLine > arr[mid][1]:
+				lb = mid + 1
+			elif dstLine < arr[mid][1]:
+				ub = mid
+			else:
+				return mid
+	def sorceLine(self, dstLine):
+		pos = self.seekInsertPos(dstLine)
+		srcLine, inDst = self.chunkList[pos - 1]
+		return srcLine + dstLine - inDst
+			
+def sourceLine(srcRef, lineNum):
+		chunk = srcRef.nearestChunk(lineNUm)
+		return chunk.srcLine + lineNum - chunk.lineNum
+@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+<<LineDirective Definition>>=
+def scan(srcPath):
+	src = open(srcPath, 'r')
+	lines = list(src)
+	pattern = re.compile('^#line (\d+), (.+)')
+	chunks = Chunks()
+	for line, lineNum in zip(lines, range(len(lines))):
+		m = pattern.match(line)
+		if m != None:
+			nwLine = m.group(1)
+			nwName = m.group(2)
+			chunks.insertChunk(int(nwLine), lineNum)
+	print chunks.chunkList
+	<<生成包裹后的代码>>
+@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+生成包裹后的代码是一个技术活。
+需要干的几件事依次是：
+\begin{inparaenum}[1)]
+\item 生成替换异常打印的函数，
+\item 计算包裹后的偏移量,
+\item 将偏移量应用到包裹后的代码中
+\end{inparaenum}
+<<替换异常打印的函数>>=
+def replaceStackTrace(nextHandler, type, value, traceback):
+	chunks = $$$
+
+	if None != nextHandler:
+		nextHandler(type, value, traceback)
+@
+<<生成包裹后的代码>>=
+@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 <<tangle source codes>>=
-notangle -Rtest.py $file>test.py
+#echo '#-*-coding: utf-8-*-'>test.py
+#notangle -RLineDirective.py -L'#line %L, %F%N' $file>>test.py
+notangle -Rtesthook $file>test.py
 @
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{action}
@@ -170,7 +311,7 @@ notangle -R"action\\_in\\_win" -t4 $file> action.bat
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 <<action\_in\_win>>=
 @echo off
-test.py
+test.py test.py
 pause
 exit 0
 @
