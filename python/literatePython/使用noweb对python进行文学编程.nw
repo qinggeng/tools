@@ -158,8 +158,10 @@ Forwarding是为了捕捉异常，并将异常的堆栈信息转化为nw文件�
 import sys
 import functools
 import traceback
+import inspect
 def onUnhandledExcept(oldHandler, type, value, tb):
 	print '#####################################'
+	print inspect.getfile(inspect.currentframe())
 	print type(tb)
 	print dir(tb)
 	print tb
@@ -267,33 +269,75 @@ def scan(srcPath):
 \item 计算包裹后的偏移量,
 \item 将偏移量应用到包裹后的代码中
 \end{inparaenum}
+@
+2014年8月7日：
+[[excepthook]]的第三个参数[[traceback]]是堆栈信息，
+可以用[[traceback]]模块的[[extract\_tb]]函数获得堆栈的列表。
+列表项是一个(文件路径, 行数, 函数, 语句)的四元组。
+@
+由于excepthook只处理那些未被捕捉的异常，因此在这个函数被调用时，
+异常已经到达了堆栈的最底层，此时获得的堆栈信息必然是完整的。
+@
+而我们的替换函数设计成责任链的形式，会逐次调用被替换的excepthook。
+同时，我们不可能为每个文件编写不同的替换函数，必须以数据来控制函数的执行，
+而非用代码。
+所以，替换的流程这么设计：
+\NewList
+\begin{easylist}
+& 替换函数首先检查异常的args中是否有堆栈信息，如果没有，
+则使用[[extract\_tb]]抽取堆栈信息，放入args中。
+& 遍历args中的堆栈信息，
+根据函数持有的源文件-目标文件对应表来替换其中可以替换的四元组。
+& 调用旧的excepthook。
+\end{easylist}
 <<替换异常打印的函数>>=
-def replaceStackTrace(nextHandler, type, value, traceback):
-	chunks = %1
+def revealLiterate(originFile, thisFile, chunks, stacks):
+	replaced = []
+	for dstPath, lineNumber, frame, source in stacks:
+		if dstPath == thisFile:
+			lineNumber = chunks.sourceLine(lineNumber)
+			dstPath = originFile
+		replaced.append((dstPath, lineNUmber, frame, source))
+	return replaced
+def replaceStackTrace(nextHandler, thisFile, type, value, tb):
+	chunks = %s
 	if len(values.args) == 0:
 		resultDict = {}
 		resultDict["dictId"] = u"9D6B6AA1-92FC-453E-8B9A-91D0E02A17B1"
+		retulstDict["stackInfo"] = stacktrace.extract_tb(tb)
 		value.args = value.args +(resultDict, ) 
 	else:
 		resultDict = value.args[-1]
+
 	if type(resultDict) != type({}):
 		resultDict = {}
 		resultDict["dictId"] = u"9D6B6AA1-92FC-453E-8B9A-91D0E02A17B1"
+		retulstDict["stackInfo"] = stacktrace.extract_tb(tb)
 		value.args = value.args +(resultDict, ) 
+
 	if "dictId" not in resultDict or resultDict["dictId"] != u"9D6B6AA1-92FC-453E-8B9A-91D0E02A17B1":
 		resultDict = {}
 		resultDict["dictId"] = u"9D6B6AA1-92FC-453E-8B9A-91D0E02A17B1"
+		retulstDict["stackInfo"] = stacktrace.extract_tb(tb)
 		value.args = value.args +(resultDict, ) 
+
+	revealLiterate(%s, thisFile, chunks, resultDict["stackInfo"])
 	if None != nextHandler:
 		nextHandler(type, value, traceback)
 @
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 <<生成包裹后的代码>>=
+srcString = """
+<<替换异常打印的函数>>
+sys.execepthook = functools.partial(sys.execepthook, inspect.getfile(inspect.currentframe()))
+""" % (str(chunks.chunkList), nwname)
+print scriptString
 @
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 <<tangle source codes>>=
-#echo '#-*-coding: utf-8-*-'>test.py
-#notangle -RLineDirective.py -L'#line %L, %F%N' $file>>test.py
-notangle -Rtesthook $file>test.py
+echo '#-*-coding: utf-8-*-'>test.py
+notangle -RLineDirective.py -L'#line %L, %F%N' $file>>test.py
+#notangle -Rtesthook $file>test.py
 @
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{action}
@@ -313,7 +357,6 @@ function tangleSource
 {
 	
 	notangle -R"$1" -t4 -L'#line %L "%F"%N' $2 | iconv -f utf-8 -t gbk > $3
-	astyle --style=ansi --mode=c $3 
 	iconv -f gbk -t utf-8 $3 > $3.utf-8
 }
 <<tangle source codes>>
