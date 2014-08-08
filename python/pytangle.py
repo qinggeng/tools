@@ -34,7 +34,6 @@ class Chunks():
 		self.currentBlock = {}
 		pass
 	def startChunk(self, line, lineNo):
-		print line
 		chunkPattern = re.compile(r'<<(.+)>>=[\b\t]*$')
 		m = chunkPattern.match(line)
 		chunkName = m.group(1)
@@ -54,13 +53,24 @@ class Chunks():
 
 	def processSource(self, line, lineNo):
 		chunkRef = re.compile(r'([\b\t]*)<<(.+)>>')
-		m = chunkPattern.match(line)
+		m = chunkRef.match(line)
 		if m == None:
 			return
 		indent = m.group(1)
 		name = m.group(2)
 		self.currentBlock['ref'].append((lineNo, indent, name))
 
+def generateChunk(chunkName, chunks, lines, indent = ''):
+	chunk = chunks[chunkName]
+	for block in chunk:
+		for lineNo in xrange(block['begin'] + 1, block['end']):
+			chunkRef = re.compile(r'([\b\t]*)<<(.+)>>')
+			m = chunkRef.match(lines[lineNo])
+			if m == None:
+				print indent + lines[lineNo][:-1]
+			else:
+				generateChunk(m.group(2), chunks, lines, indent + m.group(1))
+			
 def tangle(options):
 	f = open(options.nw_file, 'r')
 	lines = list(f)
@@ -90,7 +100,7 @@ def tangle(options):
 			else:
 				#on line transition: process line
 				chunks.processSource(line, lineNo)
-	print chunks.chunkList
+	generateChunk(options.root[0], chunks.chunkList, lines)
 if __name__ == '__main__':
-	options = ap.parse_args()
+	options = ap.parse_args(['-R', 'LineDirective.py', '-L', '#%L, %F%N', ur'literatePython\使用noweb对python进行文学编程.nw'.encode('gbk')])
 	tangle(options)
