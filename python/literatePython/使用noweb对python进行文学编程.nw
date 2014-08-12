@@ -202,6 +202,10 @@ bad()
 \end{easylist}
 <<LineDirective.py>>=
 import sys, re
+codeTemplate = """
+<<替换异常打印的函数>>
+sys.execepthook = functools.partial(sys.execepthook, inspect.getfile(inspect.currentframe()))
+"""
 <<文件行转换器>>
 <<LineDirective Definition>>
 if __name__ == '__main__':
@@ -258,7 +262,6 @@ def scan(srcPath):
 			nwLine = m.group(1)
 			nwName = m.group(2)
 			chunks.insertChunk(int(nwLine), lineNum)
-	print chunks.chunkList
 	<<生成包裹后的代码>>
 @
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -295,7 +298,7 @@ def revealLiterate(originFile, thisFile, chunks, stacks):
 	replaced = []
 	for dstPath, lineNumber, frame, source in stacks:
 		if dstPath == thisFile:
-			lineNumber = chunks.sourceLine(lineNumber)
+			lineNumber = chunks.sourceLine(lineNumber - %d)
 			dstPath = originFile
 		replaced.append((dstPath, lineNUmber, frame, source))
 	return replaced
@@ -327,16 +330,15 @@ def replaceStackTrace(nextHandler, thisFile, type, value, tb):
 @
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 <<生成包裹后的代码>>=
-srcString = """
-<<替换异常打印的函数>>
-sys.execepthook = functools.partial(sys.execepthook, inspect.getfile(inspect.currentframe()))
-""" % (str(chunks.chunkList), nwname)
-print scriptString
+srcString = codeTemplate % (len(codeTemplate.split('\n')), str(chunks.chunkList), nwName)
+print srcString
+for line in lines:
+	print line[:-1]
 @
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 <<tangle source codes>>=
 echo '#-*-coding: utf-8-*-'>test.py
-notangle -RLineDirective.py -L'#line %L, %F%N' $file>>test.py
+../pytangle.py -RLineDirective.py -L'#line %L, %F%N' $file>>test.py
 #notangle -Rtesthook $file>test.py
 @
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -356,8 +358,9 @@ log_file=$fileName.log
 function tangleSource 
 {
 	
-	notangle -R"$1" -t4 -L'#line %L "%F"%N' $2 | iconv -f utf-8 -t gbk > $3
-	iconv -f gbk -t utf-8 $3 > $3.utf-8
+	#notangle -R"$1" -t4 -L'#line %L "%F"%N' $2 | iconv -f utf-8 -t gbk > $3
+	../pytangle.py -R"$1" -L'#line %L "%F"%N' $2> $3
+	#iconv -f gbk -t utf-8 $3 > $3.utf-8
 }
 <<tangle source codes>>
 <<tangle\_windows\_part>>
@@ -369,7 +372,7 @@ notangle -R"action\\_in\\_win" -t4 $file> action.bat
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 <<action\_in\_win>>=
 @echo off
-test.py test.py
+test.py test.py>test_dst.py
 pause
 exit 0
 @

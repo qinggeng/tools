@@ -1,10 +1,11 @@
+#!/usr/bin/python
 #-*- coding: utf-8 -*-
-import sys, os
+import sys, os, os.path
 import re
 import argparse
 ap = argparse.ArgumentParser(description='notangle python version, to solve stupid indent problem')
 ap.add_argument('-R', '--root', action = 'store', nargs = 1, required = True, help = 'root chunk name for tangling', dest='root')
-ap.add_argument('-L', '--line-directive', action = 'store', nargs = 1, help = 'form of line directive')
+ap.add_argument('-L', '--line-directive', action = 'store', nargs = 1, help = 'form of line directive', dest='directiveFormat', default='')
 ap.add_argument('nw_file', nargs='?')
 """
 doc:
@@ -60,16 +61,19 @@ class Chunks():
 		name = m.group(2)
 		self.currentBlock['ref'].append((lineNo, indent, name))
 
-def generateChunk(chunkName, chunks, lines, indent = ''):
+def generateChunk(chunkName, chunks, lines, nwFileName = '', lineFormat = '', indent = ''):
 	chunk = chunks[chunkName]
 	for block in chunk:
+		if len(lineFormat) != 0:
+			directive = lineFormat.replace('%L', str(block['begin'])).replace('%F', nwFileName).replace(r'%N', '')
+			print indent + directive
 		for lineNo in xrange(block['begin'] + 1, block['end']):
 			chunkRef = re.compile(r'([\b\t]*)<<(.+)>>')
 			m = chunkRef.match(lines[lineNo])
 			if m == None:
 				print indent + lines[lineNo][:-1]
 			else:
-				generateChunk(m.group(2), chunks, lines, indent + m.group(1))
+				generateChunk(m.group(2), chunks, lines, nwFileName, lineFormat, indent + m.group(1))
 			
 def tangle(options):
 	f = open(options.nw_file, 'r')
@@ -100,7 +104,9 @@ def tangle(options):
 			else:
 				#on line transition: process line
 				chunks.processSource(line, lineNo)
-	generateChunk(options.root[0], chunks.chunkList, lines)
+	generateChunk(options.root[0], chunks.chunkList, lines, os.path.basename(options.nw_file), options.directiveFormat[0])
+
 if __name__ == '__main__':
-	options = ap.parse_args(['-R', 'LineDirective.py', '-L', '#%L, %F%N', ur'literatePython\使用noweb对python进行文学编程.nw'.encode('gbk')])
+	options = ap.parse_args()
+	#options = ap.parse_args(['-R', 'LineDirective.py', '-L', '#%L, %F%N', ur'literatePython\使用noweb对python进行文学编程.nw'.encode('utf-8')])
 	tangle(options)
