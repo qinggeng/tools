@@ -149,7 +149,7 @@ Forwarding是为了捕捉异常，并将异常的堆栈信息转化为nw文件�
 而第二种情况则必然不会被处理。
 我们当然希望，任何情况下，我们看到的异常的堆栈信息都已经对应好了。
 @
-2014年8月2日：万幸，python提供了sys.execepthook这个回掉接口，用于处理未捕捉的异常。
+2014年8月2日：万幸，python提供了sys.excepthook这个回掉接口，用于处理未捕捉的异常。
 不过这个文档还不是很明确，因此我还担心它在和其他IDE使用时，
 或者这个回掉被改写时，会是怎样的结果。
 不过不管怎么样，至少我找到了一个统一的入口来处理者系欸未处理的异常了。
@@ -201,10 +201,12 @@ bad()
 && 处理过程中的错误应该被以log的形式写文件，以备修正
 \end{easylist}
 <<LineDirective.py>>=
-import sys, re
+import sys, re, pickle
 codeTemplate = """
+#-*-coding: utf-8-*-
+import functools, sys, inspect, re, traceback, pickle
 <<替换异常打印的函数>>
-sys.execepthook = functools.partial(sys.execepthook, inspect.getfile(inspect.currentframe()))
+sys.excepthook = functools.partial(replaceStackTrace, sys.excepthook, inspect.getfile(inspect.currentframe()))
 """
 <<文件行转换器>>
 <<LineDirective Definition>>
@@ -240,14 +242,10 @@ class Chunks:
 				ub = mid
 			else:
 				return mid
-	def sorceLine(self, dstLine):
+	def sourceLine(self, dstLine):
 		pos = self.seekInsertPos(dstLine)
 		srcLine, inDst = self.chunkList[pos - 1]
 		return srcLine + dstLine - inDst
-			
-def sourceLine(srcRef, lineNum):
-		chunk = srcRef.nearestChunk(lineNUm)
-		return chunk.srcLine + lineNum - chunk.lineNum
 @
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 <<LineDirective Definition>>=
@@ -298,16 +296,16 @@ def revealLiterate(originFile, thisFile, chunks, stacks):
 	replaced = []
 	for dstPath, lineNumber, frame, source in stacks:
 		if dstPath == thisFile:
-			lineNumber = chunks.sourceLine(lineNumber - %d)
+			lineNumber = sourceLine(chunks, lineNumber - %d)
 			dstPath = originFile
-		replaced.append((dstPath, lineNUmber, frame, source))
+		replaced.append((dstPath.decode('utf-8'), lineNumber, frame, source))
 	return replaced
 def replaceStackTrace(nextHandler, thisFile, type, value, tb):
 	chunks = %s
-	if len(values.args) == 0:
+	if len(value.args) == 0:
 		resultDict = {}
 		resultDict["dictId"] = u"9D6B6AA1-92FC-453E-8B9A-91D0E02A17B1"
-		retulstDict["stackInfo"] = stacktrace.extract_tb(tb)
+		resultDict["stackInfo"] = traceback.extract_tb(tb)
 		value.args = value.args +(resultDict, ) 
 	else:
 		resultDict = value.args[-1]
@@ -315,18 +313,50 @@ def replaceStackTrace(nextHandler, thisFile, type, value, tb):
 	if type(resultDict) != type({}):
 		resultDict = {}
 		resultDict["dictId"] = u"9D6B6AA1-92FC-453E-8B9A-91D0E02A17B1"
-		retulstDict["stackInfo"] = stacktrace.extract_tb(tb)
+		resultDict["stackInfo"] = traceback.extract_tb(tb)
 		value.args = value.args +(resultDict, ) 
 
 	if "dictId" not in resultDict or resultDict["dictId"] != u"9D6B6AA1-92FC-453E-8B9A-91D0E02A17B1":
 		resultDict = {}
 		resultDict["dictId"] = u"9D6B6AA1-92FC-453E-8B9A-91D0E02A17B1"
-		retulstDict["stackInfo"] = stacktrace.extract_tb(tb)
+		resultDict["stackInfo"] = traceback.extract_tb(tb)
 		value.args = value.args +(resultDict, ) 
 
-	revealLiterate(%s, thisFile, chunks, resultDict["stackInfo"])
-	if None != nextHandler:
-		nextHandler(type, value, traceback)
+	resultDict['stackInfo'] = revealLiterate("%s", thisFile, chunks, resultDict["stackInfo"])
+	if '<built-in function excepthook>' == str(nextHandler):
+		print 'Trace back:'
+		for stackInfo in resultDict['stackInfo']:
+			print ur' File "' + stackInfo[0] + ur'", line ' + unicode(stackInfo[1]) + ur' in ' + unicode(stackInfo[2])
+			print ur'   ' + unicode(stackInfo[3])
+		value.args = value.args[:-1]
+		print value
+	elif None != nextHandler:
+		nextHandler(type, value, tb)
+
+def seekInsertPos(arr, dstLine):
+	if len(arr) == 0:
+		return -1
+	if arr[0][1] > dstLine:
+		return 0
+	if arr[-1][1] < dstLine:
+		return len(arr)
+	lb = 0
+	ub = len(arr)
+	while True:
+		if lb >= ub:
+			return lb
+		mid = lb + (ub - lb)/2
+		if dstLine > arr[mid][1]:
+			lb = mid + 1
+		elif dstLine < arr[mid][1]:
+			ub = mid
+		else:
+			return mid
+
+def sourceLine(arr, dstLine):
+	pos = seekInsertPos(arr, dstLine)
+	srcLine, inDst = arr[pos - 1]
+	return srcLine + dstLine - inDst
 @
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 <<生成包裹后的代码>>=
@@ -337,9 +367,27 @@ for line in lines:
 @
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 <<tangle source codes>>=
-echo '#-*-coding: utf-8-*-'>test.py
-../pytangle.py -RLineDirective.py -L'#line %L, %F%N' $file>>test.py
+echo '#-*-coding: utf-8-*-'>LineDirective.py
+../pytangle.py -RLineDirective.py -L'#line %L, %F%N' $file>>LineDirective.py
 #notangle -Rtesthook $file>test.py
+@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{冒烟测试}
+@
+测试方案：
+\NewList
+\begin{easylist}
+& 弄一个必然会出错的py文件
+& 用LineDirective扫描
+& 执行扫描生成的文件
+& 检查异常的结果是否正确
+\end{easylist}
+<<error.py>>=
+a=[1]
+print a[3]
+@
+<<tangle source codes>>=
+../pytangle.py -Rerror.py -L'#line %L, %F%N' $file>error.py
 @
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{action}
@@ -372,7 +420,14 @@ notangle -R"action\\_in\\_win" -t4 $file> action.bat
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 <<action\_in\_win>>=
 @echo off
-test.py test.py>test_dst.py
+REM test.py test.py>test_dst.py
+LineDirective.py LineDirective.py>temp.py
+del LineDirective.py
+rename temp.py LineDirective.py
+LineDirective.py error.py>temp.py
+del error.py
+rename temp.py error.py
+REM test.py test.py
 pause
 exit 0
 @
@@ -411,7 +466,7 @@ echo $ltx_file|sed 's/ltx$/toc/g'|xargs rm -rf
 echo $ltx_file|sed 's/ltx$/out/g'|xargs rm -rf
 rm -rf $ltx_file
 rm -rf $aux_file
-#rm -rf $log_file
+rm -rf $log_file
 @
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 <<declare of literate programming>>=
