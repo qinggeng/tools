@@ -1,0 +1,178 @@
+\section{小闹钟}
+@
+这是一个小工具，用来给我自己做点提醒的。
+它的用途是设置一些循环提醒、闹钟提醒、倒计时提醒之类的。
+当提醒的时间到的时候，它会给我的notification center发消息提醒。
+\subsection{场景}
+@
+看看一些场景：
+\NewList
+\begin{easylist}
+& 每天吃药
+& 定时喝水
+& 定时休息
+\end{easylist}
+\subsubsection{每天吃药}
+@
+我设定一个闹钟，每天在特定的时间段给我提醒吃药。
+@
+每天，如果我吃过药了，那么我会去手动取消这次提醒，
+而如果我一直置之不理，这个闹钟会按照我先前指定的频率重复提醒。
+\subsubsection{定时喝水}
+@
+我设定了一个喝水闹钟，每隔五分钟就会提醒我喝点水，它会按照频率定时提醒。
+不过有些时候，我是不希望被打扰的，所以我会提前设定喝水的提醒时段。
+\subsubsection{定时休息}
+@
+我一工作起来就容易忘了时间，为了健康着想，我需要设定一个定时休息的闹钟。
+每次我开始工作时，我都会启动这个闹钟，这个闹钟启动之后，会开始倒计时，
+在倒计时结束时提醒我。如果我不理睬这个提醒，那么就会一直反复提醒，直到我取消。
+\subsection{设计}
+@
+小闹钟有一个界面，用于显示当前正在执行的闹钟。
+@
+设定过的闹钟被放在闹钟库中，便于下次使用。
+@
+可以添加倒计时闹钟、定时闹钟等等。
+@
+设置界面要足够大，便于手指点击。
+<<设置界面的定义>>=
+class AlarmSetting(wx.Panel):
+	def __init__(self, parent):
+		wx.Panel.__init__(self, parent)
+		<<设定界面的初始布局>>
+
+app = wx.App(redirect=False)
+f = wx.Frame(None)
+f.SetSize((400, 800))
+sz = wx.BoxSizer(wx.VERTICAL)
+f.SetSizer(sz)
+p = AlarmSetting(f)
+sz.Add(p, proportion = 1, flag = wx.EXPAND|wx.ALL)
+f.Show()
+app.MainLoop()
+@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+<<设定界面的初始布局>>=
+self.SetBackgroundColour(wx.Color(240, 240, 255))
+mainSizer = wx.BoxSizer(wx.VERTICAL)
+self.SetSizer(mainSizer)
+<<一个巨大的输入框，用于输入闹钟的标题>>
+<<我是水平分割线>>
+<<用来设置计时方式和时长的区域>>
+<<我是水平分割线>>
+<<用来设置重复提醒的间隔的区域>>
+@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+<<一个巨大的输入框，用于输入闹钟的标题>>=
+te = wx.TextCtrl(self)
+mainSizer.Add(te, proportion = 0, flag = wx.EXPAND | wx.LEFT | wx.RIGHT)
+@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{文件}
+<<myAlarms.py>>=
+import wx
+<<设置界面的定义>>
+<<闹钟界面的定义>>
+<<主界面的定义>>
+@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+<<tangle source codes>>=
+tangleSource myAlarms.py $file myAlarms.py
+@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{action}
+<<action>>=
+<<tangle\_in\_linux>>
+<<weave>>
+@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{tangle}
+<<tangle\_in\_linux>>=
+fileName=myAlarms
+file=$fileName.nw
+ltx_file=$fileName.ltx
+aux_file=$fileName.aux
+log_file=$fileName.log
+function tangleSource 
+{
+	
+	echo '#-*- coding: utf-8 -*-' > $3
+	../pytangle.py -R"$1" -L'#line %L, %F%N' $2>> $3
+	python ../literatePython/LineDirective.py $3>temp.py
+	rm -rf $3
+	mv temp.py $3
+}
+<<tangle source codes>>
+<<tangle\_windows\_part>>
+@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+<<tangle\_windows\_part>>=
+notangle -R"action\\_in\\_win" -t4 $file> action.bat
+@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+<<action\_in\_win>>=
+@echo off
+myAlarms.py
+pause
+exit 0
+@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{weave}
+<<weave>>=
+noweave -x $file| \
+sed 's/\\usepackage{noweb}/\\usepackage[top=1.2in,bottom=1.2in,left=1.2in,right=1in]{geometry}&/g'| \
+sed 's/\\usepackage{noweb}/\\usepackage{fontspec, xunicode, xltxtra}&/g'| \
+sed 's/\\usepackage{noweb}/\\usepackage{listings}&/g'| \
+sed 's/\\usepackage{noweb}/\\usepackage[120, ampersand]{easylist}&/g'| \
+sed 's/\\usepackage{noweb}/\\usepackage{paralist}&/g'| \
+sed 's/\\usepackage{noweb}/\\usepackage{color}&/g'| \
+sed 's/\\usepackage{noweb}/\\usepackage{hyperref}&/g'| \
+sed 's/\\usepackage{noweb}/\\usepackage{underscore}&/g'| \
+sed 's/\\usepackage{noweb}/&\\noweboptions{longxref}/g'| \
+sed 's/\\usepackage{noweb}/&\\noweboptions{smallcode}/g'| \
+sed 's/\\usepackage{noweb}/&\\noweboptions{alphasubpage}/g'| \
+sed 's/\\usepackage{noweb}/&\\noweboptions{longchunks}/g'| \
+sed 's/\\usepackage{noweb}/&\\XeTeXlinebreaklocale "zh-cn"/g'| \
+sed 's/\\usepackage{noweb}/&\\pagecolor{grayyellow}/g'| \
+sed 's/\\usepackage{noweb}/&\\definecolor{grayyellow}{RGB}{255, 255, 200}/g'| \
+sed 's/\\usepackage{noweb}/&\\XeTeXlinebreakskip = 0pt plus 1pt minus 0.1pt/g'| \
+sed 's/\\usepackage{noweb}/&\\setmainfont[BoldFont={Adobe Heiti Std}]{Adobe Song Std}/g'| \
+sed 's/\\usepackage{noweb}/&\\setmonofont[Color=0000FF99]{Microsoft YaHei UI Light}/g'| \
+sed 's/\\usepackage{noweb}/\\usepackage{amsmath}&/g'| \
+sed 's/\\usepackage{noweb}/\\usepackage{amssymb}&/g'| \
+sed 's/\\begin{document}/&\\tableofcontents/g'| \
+sed 's/\\begin{document}/&\\setcounter{tocdepth}{7}/g'| \
+sed 's/\\documentclass/&[11pt]/g'|
+sed 's/    /  /g'> $ltx_file &2|iconv -f utf-8 -t gbk
+xelatex $ltx_file
+xelatex $ltx_file
+echo $ltx_file|sed 's/ltx$/aux/g'|xargs rm -rf
+echo $ltx_file|sed 's/ltx$/toc/g'|xargs rm -rf
+echo $ltx_file|sed 's/ltx$/out/g'|xargs rm -rf
+rm -rf $ltx_file
+rm -rf $aux_file
+rm -rf $log_file
+@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+<<declare of literate programming>>=
+/*
+
+              *****************************************
+              *                                       *
+              *                注意事项               *
+              *                                       *
+              *****************************************
+
+你看到的这份源码文件不是直接生成的,而是使用noweb工具，从*.nw文件中将代码抽取出来组织而成的。
+因此请不要直接编辑这些源文件，否则它们会被*.nw文件中的内容覆盖掉。
+如果想了解如何使用noweb工具抽取代码和生成pdf文档，请联系huangyangkun@gmail.com。
+noweb是一个“文学编程（literate programming）”工具。
+关于文学编程: http://zh.wikipedia.org/wiki/%E6%96%87%E5%AD%A6%E7%BC%96%E7%A8%8B
+关于noweb: http://en.wikipedia.org/wiki/Noweb
+*/
+@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\newpage
+\section{代码块列表}
+\nowebchunks

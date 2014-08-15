@@ -298,7 +298,7 @@ def revealLiterate(originFile, thisFile, chunks, stacks):
 		if dstPath == thisFile:
 			lineNumber = sourceLine(chunks, lineNumber - %d)
 			dstPath = originFile
-		replaced.append((dstPath.decode('utf-8'), lineNumber, frame, source))
+	replaced.append((dstPath.decode('utf-8'), lineNumber, frame, source))
 	return replaced
 def replaceStackTrace(nextHandler, thisFile, type, value, tb):
 	chunks = %s
@@ -324,12 +324,12 @@ def replaceStackTrace(nextHandler, thisFile, type, value, tb):
 
 	resultDict['stackInfo'] = revealLiterate("%s", thisFile, chunks, resultDict["stackInfo"])
 	if '<built-in function excepthook>' == str(nextHandler):
-		print 'Trace back:'
+		print 'Unhandled Exception, trace back:'
 		for stackInfo in resultDict['stackInfo']:
-			print ur' File "' + stackInfo[0] + ur'", line ' + unicode(stackInfo[1]) + ur' in ' + unicode(stackInfo[2])
+			print ur' File "' + unicode(stackInfo[0]) + ur'", line ' + unicode(stackInfo[1]) + ur' in ' + unicode(stackInfo[2])
 			print ur'   ' + unicode(stackInfo[3])
 		value.args = value.args[:-1]
-		print value
+		print re.compile(r"<type '([^']+)'>").match(str(type)).group(1)+":", value
 	elif None != nextHandler:
 		nextHandler(type, value, tb)
 
@@ -386,6 +386,7 @@ echo '#-*-coding: utf-8-*-'>LineDirective.py
 a=[1]
 print a[3]
 @
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 <<tangle source codes>>=
 ../pytangle.py -Rerror.py -L'#line %L, %F%N' $file>error.py
 @
@@ -427,6 +428,7 @@ rename temp.py LineDirective.py
 LineDirective.py error.py>temp.py
 del error.py
 rename temp.py error.py
+error.py
 REM test.py test.py
 pause
 exit 0

@@ -62,6 +62,8 @@ class Chunks():
 		self.currentBlock['ref'].append((lineNo, indent, name))
 
 def generateChunk(chunkName, chunks, lines, nwFileName = '', lineFormat = '', indent = ''):
+	if chunkName not in chunks:
+		return
 	chunk = chunks[chunkName]
 	for block in chunk:
 		if len(lineFormat) != 0:
