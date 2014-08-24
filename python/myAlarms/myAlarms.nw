@@ -41,6 +41,7 @@ class AlarmSetting(wx.Panel):
 	def __init__(self, parent):
 		wx.Panel.__init__(self, parent)
 		<<设定界面的初始布局>>
+	<<设置界面的事件处理函数>>
 
 app = wx.App(redirect=False)
 f = wx.Frame(None)
@@ -66,12 +67,180 @@ self.SetSizer(mainSizer)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 <<一个巨大的输入框，用于输入闹钟的标题>>=
 te = wx.TextCtrl(self)
+font = te.GetFont()
+font.SetPointSize(24)
+try:
+	font.SetFaceName(u'Yahei Mono')
+except Exception, e:
+	pass
+te.SetFont(font)
 mainSizer.Add(te, proportion = 0, flag = wx.EXPAND | wx.LEFT | wx.RIGHT)
+self.titleInput = te
+@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+计时方法分两种：固定时间和倒计时。因此我们的时间设置区域也区分这两种情况。
+区分的方法是，在区域的最上方设置类似segment/tab control，以区分计时方式。
+在提示区域的下方就是时间设定。
+@
+关于闹钟重复的讨论：
+\NewList
+\begin{easylist}
+& 不重复
+& 重复
+&& 每年，月，日，时，分，秒
+&& 每个工作日
+&& 每个满足条件的时间点
+&& 如果今天是工作日，则在今天启用
+&& 如果XXX，则启用
+&&& 如果今天是工作日，则启用
+&&& 如果今天没用过，则启用
+&&& 如果过了整点，则启用
+&&& 如果是每个月的第一天，则启用
+&&& 如果是某天，则启用
+&&& 如果程序启动，则启用
+\end{easylist}
+@
+有一个闹钟设置器，它会反复检索启用条件，从模板库中根据闹钟模板生成新的闹钟。
+@
+当然，这种设置器并不是一直在检索条件，这不合理。
+怎样才是合理的？
+在恰当的时机，根据启用条件生成定时事件，在定时事件中启用闹钟？
+@
+我不想一直检索条件，是因为检索条件可能是非常复杂的操作，因此可能会阻塞，
+也会无谓地消耗计算资源。
+因此，反其道而行之，程序每次启动，会检索启用条件，生成闹钟。
+但是，假设程序一直运行，那么我们也需要一个时机来检索启用条件。
+什么时机呢？
+一个隐藏的时钟事件？
+这个事件的执行，一是激活一个闹钟，二是用于设置同等条件下的下一次时钟事件？
+当程序启动、重复条件更改时，都会启用这个隐藏的时钟事件。
+@
+\NewList
+\begin{easylist}
+& 程序有闹钟模板库和激活闹钟库
+& 每次启动时，程序扫描闹钟模板库中的闹钟模板，根据模板内容生成激活闹钟
+& 每个激活的闹钟知道来自于哪个模板，当闹钟结束时，程序会再次根据闹钟的模板生成激活闹钟
+& 关于闹钟模板的状态：
+&& 闹钟模板有两种状态，启用和停用，只有启用的闹钟模板才能用于生成激活的闹钟。
+\end{easylist}
+<<用来设置计时方式和时长的区域>>=
+<<计时方式提醒/切换区域>>
+<<时间设置区域>>
+@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+<<计时方式提醒/切换区域>>=
+headerSizer = wx.BoxSizer(wx.HORIZONTAL)
+t1 = wx.StaticText(self, style = wx.BORDER_NONE,label = u"倒计时")
+t1.SetFont(font)
+headerSizer.Add(t1)
+headerSizer.Add((20, 0))
+t1.Bind(wx.EVT_LEFT_UP, self.onChooseCountDown)
+self.ctHeader = t1
+
+t1 = wx.StaticText(self, style = wx.BORDER_NONE,label = u"定时")
+t1.SetFont(font)
+t1.SetForegroundColour(wx.Color(128, 128, 128))
+headerSizer.Add(t1)
+t1.Bind(wx.EVT_LEFT_UP, self.onChooseAlarm)
+mainSizer.Add(headerSizer)
+self.amHeader = t1
+p = wx.Panel(self)
+p.SetBackgroundColour(wx.Color(240, 240, 255))
+panelSizer = wx.BoxSizer(wx.VERTICAL)
+p.SetSizer(panelSizer)
+p.SetMinSize((100, 200))
+<<布局时长设置界面>>
+mainSizer.Add(p, proportion = 0, flag = wx.EXPAND | wx.LEFT | wx.RIGHT)
+@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+<<布局时长设置界面>>=
+sz = p.GetSizer()
+bsz = wx.BoxSizer(wx.HORIZONTAL)
+imgPath =u"appbar.navigate.previous.png" 
+<<添加时长的操作按钮>>
+bsz.Add((32, 0))
+imgPath =u"appbar.navigate.next.png" 
+<<添加时长的操作按钮>>
+bsz.Add((1, 0), proportion = 1, flag = wx.EXPAND| wx.LEFT| wx.RIGHT)
+imgPath =u"appbar.add.png" 
+<<添加时长的操作按钮>>
+bsz.Add((32, 0))
+imgPath =u"appbar.minus.png" 
+<<添加时长的操作按钮>>
+sz.Add(bsz, proportion = 0, flag = wx.EXPAND | wx.LEFT | wx.RIGHT)
+sz.Add((0, 20))
+<<添加年月日时分秒>>
+@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+<<添加年月日时分秒>>=
+gsz = wx.GridSizer(2, 3)
+hint = u"年"
+<<添加时间编辑控件>>
+hint = u"月"
+<<添加时间编辑控件>>
+hint = u"日"
+<<添加时间编辑控件>>
+hint = u"时"
+<<添加时间编辑控件>>
+hint = u"分"
+<<添加时间编辑控件>>
+hint = u"秒"
+<<添加时间编辑控件>>
+sz.Add(gsz, proportion = 1, flag = wx.EXPAND | wx.LEFT | wx.RIGHT)
+@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+<<设置界面的事件处理函数>>=
+def onEditKillFocus(self, te, hint, ev):
+	v = te.GetValue().strip()
+	if len(v) == 0:
+		te.SetValue(hint)
+@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+<<添加时间编辑控件>>=
+te = wx.TextCtrl(p)
+te.SetFont(font)
+te.SetValue(hint)
+te.SetForegroundColour(wx.Colour(220, 220, 220))
+gsz.Add(te, proportion = 1, flag = wx.ALIGN_CENTER_HORIZONTAL)
+te.Bind(wx.EVT_KILL_FOCUS, functools.partial(self.onEditKillFocus, te, hint))
+@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+<<添加时长的操作按钮>>=
+b = wxTools.makeBitmapButton(
+		p,
+		(48, 48),
+		imgPath)
+b.SetBackgroundColour(wx.Color(240, 240, 255))
+bsz.Add(b, proportion = 0)
+@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+<<设置界面的事件处理函数>>=
+def onChooseCountDown(self, evt):
+	t1 = self.ctHeader
+	t1.SetForegroundColour(wx.Color(0, 0, 0))
+	t1 = self.amHeader
+	t1.SetForegroundColour(wx.Color(128, 128, 128))
+	self.Refresh()
+def onChooseAlarm(self, evt):
+	t1 = self.ctHeader
+	t1.SetForegroundColour(wx.Color(128, 128, 128))
+	t1 = self.amHeader
+	t1.SetForegroundColour(wx.Color(0, 0, 0))
+	self.Refresh()
+@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+<<我是水平分割线>>=
+l = wx.StaticLine(self, wx.HORIZONTAL)
+mainSizer.Add((0, 4))
+mainSizer.Add(l, proportion = 0, flag = wx.EXPAND | wx.LEFT | wx.RIGHT)
+mainSizer.Add((0, 4))
 @
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{文件}
 <<myAlarms.py>>=
 import wx
+import wxTools
+import functools
 <<设置界面的定义>>
 <<闹钟界面的定义>>
 <<主界面的定义>>
