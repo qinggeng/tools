@@ -36,13 +36,13 @@
 可以添加倒计时闹钟、定时闹钟等等。
 @
 设置界面要足够大，便于手指点击。
-<<设置界面的定义>>=
-class AlarmSetting(wx.Panel):
-	def __init__(self, parent):
-		wx.Panel.__init__(self, parent)
-		<<设定界面的初始布局>>
-	<<设置界面的事件处理函数>>
-
+\subsubsection{闹钟详细设置界面}
+<<tangle source codes>>=
+tangleSource alarmConfigTest.py $file alarmConfigTest.py
+@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+<<alarmConfigTest.py>>=
+<<myAlarms.py>>
 app = wx.App(redirect=False)
 f = wx.Frame(None)
 f.SetSize((400, 800))
@@ -54,6 +54,16 @@ f.Show()
 app.MainLoop()
 @
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+<<设置界面的定义>>=
+def alwayFalse():
+	return False
+class AlarmSetting(wx.Panel):
+	def __init__(self, parent):
+		wx.Panel.__init__(self, parent)
+		<<设定界面的初始布局>>
+	<<设置界面的事件处理函数>>
+@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 <<设定界面的初始布局>>=
 self.SetBackgroundColour(wx.Color(240, 240, 255))
 mainSizer = wx.BoxSizer(wx.VERTICAL)
@@ -63,6 +73,21 @@ self.SetSizer(mainSizer)
 <<用来设置计时方式和时长的区域>>
 <<我是水平分割线>>
 <<用来设置重复提醒的间隔的区域>>
+@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+<<用来设置重复提醒的间隔的区域>>=
+btn = SwitchButton(self)
+btn.title = u"激活"
+ft = btn.GetFont()
+ft.SetPointSize(24)
+ft.SetFaceName(u'Yahei Mono')
+btn.SetFont(ft)
+bsz = wx.BoxSizer(wx.HORIZONTAL)
+bsz.Add((50, -1))
+bsz.Add(btn, proportion = 1, flag = wx.EXPAND |wx.LEFT|wx.RIGHT)
+bsz.Add((20, -1))
+mainSizer.Add(bsz, proportion = 0, flag = wx.EXPAND | wx.LEFT | wx.RIGHT)
+<<我是水平分割线>>
 @
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 <<一个巨大的输入框，用于输入闹钟的标题>>=
@@ -158,9 +183,11 @@ sz = p.GetSizer()
 bsz = wx.BoxSizer(wx.HORIZONTAL)
 imgPath =u"appbar.navigate.previous.png" 
 <<添加时长的操作按钮>>
+b.Bind(wx.EVT_BUTTON, self.onNavPrevBtn)
 bsz.Add((32, 0))
 imgPath =u"appbar.navigate.next.png" 
 <<添加时长的操作按钮>>
+b.Bind(wx.EVT_BUTTON, self.onNavNextBtn)
 bsz.Add((1, 0), proportion = 1, flag = wx.EXPAND| wx.LEFT| wx.RIGHT)
 imgPath =u"appbar.add.png" 
 <<添加时长的操作按钮>>
@@ -174,26 +201,40 @@ sz.Add((0, 20))
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 <<添加年月日时分秒>>=
 gsz = wx.GridSizer(2, 3)
+self.timeEdits = []
 hint = u"年"
 <<添加时间编辑控件>>
+self.yearEdit = te
 hint = u"月"
 <<添加时间编辑控件>>
+self.monthEdit = te
 hint = u"日"
 <<添加时间编辑控件>>
+self.dayEdit = te
 hint = u"时"
 <<添加时间编辑控件>>
+self.hourEdit = te
 hint = u"分"
 <<添加时间编辑控件>>
+self.minuteEdit = te
 hint = u"秒"
 <<添加时间编辑控件>>
+self.secondEdit = te
 sz.Add(gsz, proportion = 1, flag = wx.EXPAND | wx.LEFT | wx.RIGHT)
+self.lastFocusTimeEdit = None
 @
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 <<设置界面的事件处理函数>>=
+def onEditSetFocus(self, te, hint, ev):
+	v = te.GetValue().strip()
+	if v == hint:
+		te.SetValue(u"")
+	te.SetForegroundColour(wx.Colour(0, 0, 0))
 def onEditKillFocus(self, te, hint, ev):
 	v = te.GetValue().strip()
 	if len(v) == 0:
 		te.SetValue(hint)
+		te.SetForegroundColour(wx.Colour(220, 220, 220))
 @
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 <<添加时间编辑控件>>=
@@ -203,6 +244,8 @@ te.SetValue(hint)
 te.SetForegroundColour(wx.Colour(220, 220, 220))
 gsz.Add(te, proportion = 1, flag = wx.ALIGN_CENTER_HORIZONTAL)
 te.Bind(wx.EVT_KILL_FOCUS, functools.partial(self.onEditKillFocus, te, hint))
+te.Bind(wx.EVT_SET_FOCUS, functools.partial(self.onEditSetFocus, te, hint))
+self.timeEdits.append(te)
 @
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 <<添加时长的操作按钮>>=
@@ -211,16 +254,40 @@ b = wxTools.makeBitmapButton(
 		(48, 48),
 		imgPath)
 b.SetBackgroundColour(wx.Color(240, 240, 255))
+b.Bind(wx.EVT_NAVIGATION_KEY, self.onNavKeyOnControlButtons)
 bsz.Add(b, proportion = 0)
 @
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 <<设置界面的事件处理函数>>=
+def onNavNextBtn(self, ev):
+	wnd = self.lastFocusTimeEdit
+	if wnd not in self.timeEdits:
+		self.yearEdit.SetFocus()
+	else:
+		self.timeEdits[(self.timeEdits.index(wnd) + 1) % len(self.timeEdits)].SetFocus()
+	self.lastFocusTimeEdit = wx.Window.FindFocus()
+
+def onNavPrevBtn(self, ev):
+	wnd = self.lastFocusTimeEdit
+	if wnd not in self.timeEdits:
+		self.secondEdit.SetFocus()
+	else:
+		self.timeEdits[(self.timeEdits.index(wnd) - 1) % len(self.timeEdits)].SetFocus()
+	self.lastFocusTimeEdit = wx.Window.FindFocus()
+
+def onNavKeyOnControlButtons(self, ev):
+	if ev.GetDirection() == wx.NavigationKeyEvent.IsForward:
+		self.yearEdit.SetFocus()
+	else:
+		self.titleInput.SetFocus()
+
 def onChooseCountDown(self, evt):
 	t1 = self.ctHeader
 	t1.SetForegroundColour(wx.Color(0, 0, 0))
 	t1 = self.amHeader
 	t1.SetForegroundColour(wx.Color(128, 128, 128))
 	self.Refresh()
+
 def onChooseAlarm(self, evt):
 	t1 = self.ctHeader
 	t1.SetForegroundColour(wx.Color(128, 128, 128))
@@ -236,18 +303,367 @@ mainSizer.Add(l, proportion = 0, flag = wx.EXPAND | wx.LEFT | wx.RIGHT)
 mainSizer.Add((0, 4))
 @
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsubsection{闹钟界面}
+@
+闹钟界面指的是在主界面中的闹钟的摘要界面。
+摘要界面的主要作用是显示闹钟的信息、时间和是否启用。
+同时还能在摘要界面上直接启用或者禁用闹钟，或者进入闹钟的详细设置界面。
+<<tangle source codes>>=
+tangleSource alarmBriefTest.py $file alarmBriefTest.py
+@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+<<alarmBriefTest.py>>=
+<<myAlarms.py>>
+app = wx.App(redirect=False)
+f = wx.Frame(None)
+f.SetSize((320, 180))
+sz = wx.BoxSizer(wx.VERTICAL)
+f.SetSizer(sz)
+p = AlarmBrief(f)
+p.setBrief(u"测试闹钟")
+p.setAlarmTime(u"每个工作日9点30分")
+sz.Add(p, proportion = 1, flag = wx.EXPAND|wx.ALL)
+f.Show()
+app.MainLoop()
+@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+<<闹钟界面的定义>>=
+class AlarmBrief(wx.Panel):
+	def __init__(self, parent):
+		wx.Panel.__init__(self, parent)
+		mainSizer = wx.BoxSizer(wx.VERTICAL)
+		self.SetSizer(mainSizer)
+		font = self.GetFont()
+		font.SetPointSize(24)
+		font.SetFaceName(u'Yahei Mono')
+		self.SetFont(font)
+		st = wx.StaticText(self)
+		st.SetFont(font)
+		mainSizer.Add(st, proportion = 0, flag = wx.EXPAND| wx.LEFT | wx.RIGHT)
+		self.briefText = st
+
+		st = wx.StaticText(self)
+		font.SetPointSize(16)
+		st.SetFont(font)
+		mainSizer.Add(st, proportion = 0, flag = wx.EXPAND| wx.LEFT | wx.RIGHT)
+		self.alarmTime = st
+
+		<<闹钟界面的工具条>>
+	
+	def setAlarmTime(self, text):
+		self.alarmTime.SetLabel(text)
+		self.Refresh()
+
+	def setBrief(self, text):
+		self.briefText.SetLabel(text)
+		self.Refresh()
+	
+	def onConfigBtn(self, ev):
+		if self.config != None:
+			self.config()
+		pass
+	def onActiveBtn(self, ev):
+		if self.switchActive != None:
+			self.switchActive()
+
+	def onDeleteBtn(self, ev):
+		if self.delete != None:
+			self.delete()
+	
+	def activate(self):
+		self.activeBtn.SetBitmapLabel(wx.BitmapFromImage(resource['appbar.clock.png']))
+		self.Refresh()
+
+	def deactivate(self):
+		self.acctiveBtn.SetBitmapLabel(wx.BitmapFromImage(resource['appbar.clock.png.disabled']))
+		self.Refresh()
+@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+@
+工具条位于闹钟名称和时间提示的下方，有配置和启用两个按钮。
+这两个按钮左右分布，以防止误触。
+<<闹钟界面的工具条>>=
+toolbarSizer = wx.BoxSizer(wx.HORIZONTAL)
+
+btn = wx.BitmapButton(self, style = 0)
+self.deleteBtn = btn
+btn.Bind(wx.EVT_BUTTON, self.onDeleteBtn)
+img = resources['delete.png'].Copy()
+img.Rescale(60, 60, wx.IMAGE_QUALITY_HIGH)
+btn.SetBitmapLabel(wx.BitmapFromImage(img))
+btn.SetSize((60, 60))
+toolbarSizer.Add(btn, proportion = 0, flag = wx.SHAPED)
+
+toolbarSizer.Add((1, 0), proportion = 1, flag = wx.EXPAND | wx.LEFT | wx.RIGHT)
+
+btn = wx.BitmapButton(self, style = 0)
+self.configBtn = btn
+btn.Bind(wx.EVT_BUTTON, self.onConfigBtn)
+img = resources['cog.png'].Copy()
+img.Rescale(60, 60, wx.IMAGE_QUALITY_HIGH)
+btn.SetBitmapLabel(wx.BitmapFromImage(img))
+btn.SetSize((60, 60))
+toolbarSizer.Add(btn, proportion = 0, flag = wx.SHAPED)
+
+toolbarSizer.Add((1, 0), proportion = 1, flag = wx.EXPAND | wx.LEFT | wx.RIGHT)
+
+btn = wx.BitmapButton(self, style = 0)
+self.activeBtn = btn
+btn.Bind(wx.EVT_BUTTON, self.onActiveBtn)
+img = resources['clock.png'].Copy()
+img.Rescale(60, 60, wx.IMAGE_QUALITY_HIGH)
+btn.SetBitmapLabel(wx.BitmapFromImage(img))
+btn.SetSize((60, 60))
+toolbarSizer.Add(btn, proportion = 0, flag = wx.SHAPED)
+mainSizer.Add(toolbarSizer, proportion = 0, flag = wx.EXPAND | wx.LEFT | wx.RIGHT)
+@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsubsection{执行闹钟界面}
+@
+执行闹钟界面和闹钟界面很类似，都有闹钟名称和时间提示。所不同的是，执行闹钟有倒计时，
+另外它的工具条在未到预定时间时显示取消按钮；在到时间后，显示消除或者推迟按钮。
+<<alarmRunningTest.py>>=
+<<myAlarms.py>>
+def onTimer(p, ev):
+	p.countDown()
+app = wx.App(redirect=False)
+f = wx.Frame(None)
+f.SetSize((320, 180))
+sz = wx.BoxSizer(wx.VERTICAL)
+f.SetSizer(sz)
+p = RunningAlarm(f)
+p.setBrief(u"测试闹钟")
+id = wx.NewId()
+timer = wx.Timer(p, id)
+timer.Start(1000, False)
+p.Bind(wx.EVT_TIMER, functools.partial(onTimer, p))
+p.setCountDownSeconds(900)
+#p.setAlarmTime(u"每个工作日9点30分")
+sz.Add(p, proportion = 1, flag = wx.EXPAND|wx.ALL)
+f.Show()
+app.MainLoop()
+@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+<<tangle source codes>>=
+tangleSource alarmRunningTest.py $file alarmRunningTest.py
+@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+执行闹钟界面有3行，名称，时间描述和倒计时。有一个工具条。
+可以设定执行闹钟的倒计时长度。
+执行闹钟会自动倒计时，并在时间到达时通知。
+<<执行闹钟界面的定义>>=
+class RunningAlarm(wx.Panel):
+	def __init__(self, parent):
+		wx.Panel.__init__(self, parent)
+		mainSizer = wx.BoxSizer(wx.VERTICAL)
+		self.SetSizer(mainSizer)
+		font = self.GetFont()
+		font.SetPointSize(24)
+		font.SetFaceName('Yahei Mono')
+		st = wx.StaticText(self)
+		st.SetFont(font)
+		mainSizer.Add(st, proportion = 0, flag = wx.EXPAND | wx.LEFT | wx.RIGHT)
+		self.briefText = st
+		st = wx.StaticText(self)
+		st.SetFont(font)
+		mainSizer.Add(st, proportion = 0, flag = wx.EXPAND | wx.LEFT | wx.RIGHT)
+		self.countDownText = st
+		self.seconds = 0
+	
+	def setBrief(self, text):
+		self.briefText.SetLabel(text)
+	def displayCountDown(self):
+		self.countDownText.SetLabel(wx.TimeSpan.Seconds(self.seconds).Format(u"%H:%M:%S"))
+		self.Refresh()
+	def setCountDownSeconds(self, seconds):
+		self.seconds = seconds
+		self.displayCountDown()
+		
+	def countDown(self):
+		self.seconds = max(0, self.seconds - 1)
+		self.displayCountDown()
+
+	def alarm(self):
+		pass
+	def cancel(self):
+		pass
+@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsubsection{主界面}
+@
+主界面需要：
+\begin{inparaenum}
+\item 提供离当前最近的闹钟的倒计时和当前最近的闹钟的内容。
+\item 根据设置提供某个时间段内的闹钟列表。
+\item 可以直接取消这个时间段内的任意闹钟。
+\item 解除或延迟已到期的闹钟。
+\item 可以查看所有闹钟的列表，在列表上直接启用/禁用/删除闹钟，或者进入闹钟的详细设置界面。
+\end{inparaenum}
+
+\subsection{控件}
+\subsubsection{SwitchBox}
+@
+这是一个勾选框，因为系统的勾选框不能做到巨大，所以要自己写一个。
+
+<<辅助控件的定义>>=
+class SwitchButton(wx.Control):
+	def __init__(self, parent):
+		self.checked = False
+		self.title = u""
+		wx.Control.__init__(self, parent, style = wx.BORDER_NONE, size=(100, 40))
+		self.SetBackgroundStyle(wx.BG_STYLE_CUSTOM)
+		self.Bind(wx.EVT_PAINT, self.onPaint)
+		self.Bind(wx.EVT_LEFT_UP, self.onClick)
+	
+	def onClick(self, ev):
+		if self.checked == True:
+			self.checked = False
+		else:
+			self.checked = True
+		self.Refresh()
+
+	def drawEmptyRect(self, dc, x, y, w, h):
+		dc.DrawLines([(x, y),(x + w, y), (x + w, y + h), (x, y + h), (x, y)])
+
+	def onPaint(self, ev):
+#print self.GetRect().asTuple()
+		dc = wx.AutoBufferedPaintDC(self)
+		brush = wx.Brush(wx.Color(240, 240, 255), wx.SOLID)
+		dc.SetBackground(brush)
+		dc.Clear()
+		<<排版勾选框按钮>>
+		pass
+@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+它的排版规则是这样：
+文字靠左，勾选靠右，勾选盖在文字上面。垂直居中显示
+<<排版勾选框按钮>>=
+w, h = self.GetSize()
+font = self.GetFont()
+fz = font.GetPointSize()
+dc.SetFont(font)
+tw, th = dc.GetTextExtent(self.title)
+titleOffsetY = max(0, (h - th))/2
+dc.DrawText(self.title, 0, titleOffsetY)
+font.SetFaceName(u'Segoe UI Symbol')
+dc.SetFont(font)
+mw, mh = dc.GetTextExtent(u"\u2713")
+rw = rh = max(mw, mh)
+checkOffsetX = max(w - rw -2, tw + 20)
+checkOffsetY = max(h - rh, 0) / 2
+self.drawEmptyRect(dc, checkOffsetX, checkOffsetY, rw, rh)
+if self.checked:
+	dc.DrawText(u"\u2713", checkOffsetX + (rw - mw) / 2, checkOffsetY)
+@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{文件}
 <<myAlarms.py>>=
 import wx
 import wxTools
 import functools
+from wx.lib.embeddedimage import PyEmbeddedImage
+<<程序所需的图片和其他资源>>
+<<辅助控件的定义>>
 <<设置界面的定义>>
 <<闹钟界面的定义>>
+<<执行闹钟界面的定义>>
 <<主界面的定义>>
 @
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 <<tangle source codes>>=
 tangleSource myAlarms.py $file myAlarms.py
+@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{图片和其他资源}
+<<程序所需的图片和其他资源>>=
+resources={}
+@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{图片}
+\subsubsection{cog.png}
+<<程序所需的图片和其他资源>>=
+appbar_cog = PyEmbeddedImage(
+    "iVBORw0KGgoAAAANSUhEUgAAAEwAAABMCAYAAADHl1ErAAAAAXNSR0IArs4c6QAAAARnQU1B"
+    "AACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAANTSURBVHhe7ZpNyA1RGMdvyEfykVAW"
+    "ykJKUrIg+Ug2lGKnJLJggZKFkp2yshMLJUlJUrIjSmFrgZJY+Ei+SiJfRQm/f3fmbZqeM3Pf"
+    "OzP3zsz7/OrXjLf7HvOc95w5z3nO7TiO4ziO4ziO4ziO4ziO4zjOcBgfXYfFONyKn/GnfhBg"
+    "AZ7HH/gC/+GYYiYewVeo4I9iFsdQn5Pv8DiqE1uPgjyF3zHuAPkRJ2GIuGOT/sW92GpWYDrw"
+    "2N1osR6tz8sl2HruoBX8G7yLGk1/UO80Tb9PaH3+Po4JtqDVAaN1Pw4crVKD5ga+794WYnJ0"
+    "bTX6A51Ea8T04zmciK1EgV1BK/AiXscJmESLwfzubTPYg0u7tyOUObLSnkGxEW+hUg6NvkYw"
+    "D7XKKZBHqJezUoZ0kGm1eu7DRTgVZ6NGyg68iuoE6/ditaIm/61Vdi7WHmXtyQfP8yVuwDw0"
+    "Yh+j1UbIvB1ELbCy8pDKuzSSekUjT1POasvyA6bfb7UiKytPq47VnnK0TMMnaLVpuRNrywW0"
+    "HtpyNfbLSrTaTPoFT2CtV0u98FWFeIpWELGaVkVROmG1rWl4EDUSG8UqVJ3LCuoAFiW08t7E"
+    "xqKyjRVUGVWGhWi1/RwbixWQzKp99cp0tNr+ipUxjM23+B1dixDq9DLaDlJ1h72NrmnKWLlC"
+    "bXyLrpUwrA5bE12LoEXFQlN1Mw5r9vSFsuvt+Bqt94xSgqLkZfzaWyoPW4y1JT4NUrnZCiJp"
+    "1Ylr7EWsLdqGWA9tqe1Nv1ujZ2i1aantWm3RVFSmbT24ZdWbb+1Xa08/5Z11mMcyfIhWGyEb"
+    "Ud5R0U7Fu+SDh47Kkt7DQ7gcZ6DyLB386pTpEuYVEHWouwtvoz6rIqb2to1A5WEF8QBVMdVU"
+    "PR39rArPYhJ1tP7fxqAHXtu9HUF50TW0Ai6i3mlTsJWo05Qb5U2vXtXhR6MS1H7p5VAkT1VC"
+    "Bn4m2eS/zhzc1L1tP6EvpGg11ZZGq6xWOeVRytVCOwe103q0IFjBy1BWnjWF9RWqVrMNf2E6"
+    "8KysXDlZunqrEXgZa725LotZeBiTB7P6WmYW8Q5C5wS1Pw2qElUelOhqqmahHYS+s1FGedtx"
+    "HMdxHMdxHMdxHMdxHMdxmkWn8x9660xsQgPtoQAAAABJRU5ErkJggg==")
+getappbar_cogData = appbar_cog.GetData
+getappbar_cogImage = appbar_cog.GetImage
+getappbar_cogBitmap = appbar_cog.GetBitmap
+resources['cog.png'] = getappbar_cogImage()
+@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsubsection{clock.png}
+<<程序所需的图片和其他资源>>=
+appbar_clock = PyEmbeddedImage(
+    "iVBORw0KGgoAAAANSUhEUgAAAEwAAABMCAYAAADHl1ErAAAAAXNSR0IArs4c6QAAAARnQU1B"
+    "AACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAQGSURBVHhe7ZpfqBVVFIdvGfUgoYiF"
+    "gmmoGVKWCioiSf+kwh4kVAhERJPQJxE08skHJSLowYhAqhcfDHsSiXoyQVSIEAX/9CCliIkR"
+    "CWUaEuXvu2c2LBb7zDnnOnPvmXvXBx977j0ze89ezOy9Z80MBEEQBEEQBEEQBEEQBEEQBEHQ"
+    "CB4oyrp5Rj4tx8nL8qy8K++XOfJ5OUFekidlFfWOGGvkFfm/86pcJYfKi/Ki9PXelO/KB2Xj"
+    "+ET6DlnvyIWyV2bLv2SuzuQB2SjWyVxH8B/5qXxCergyCMiSwnmS283zuPxI/i1zbeA7sjFc"
+    "l7lOnJFPSct8uVf+IAlm7rhf5H75qrS321R5XOaO4RwaAQN8rgOfyYdl4i35o8ztWyaD+xaZ"
+    "Akf5gczty7n0PZukP/EdMjFTHpV+n149LbllE7Th92Fo6Hu2SnvSNljMbr9L+7v1tvxZcnsi"
+    "22XjFL/Z2dYHjVm67yEo6YQ/5x8F/D/X+f/kYblaPio9D8mX5ZcyN8ax7rJBY0JJv9Fm30MH"
+    "GWdYf03kH2KZzAXriLS3VSeYQQ9KXw9BWyGBoHNlcg6cSyNYLl9rbQ5Mltek7SBX1Xsyt8Ac"
+    "Lye1NtvCkoEg2Tp/kyw3gCsrtd84WA7YjhGst2UOBukUCB6f7Kzq4TakLls3t22j4Rb6V9pO"
+    "seZqx/fS7svxZeySdv9ujulrGPRtZzqNKz5gndZRaby0x9iJplE8Iv+QtjMbZBm9Bgyo0x5D"
+    "m7TdOOzyAnlU6TRrDSVg4B/FaltO5GapqvAn/bVkPKsD6rY0MmALijLxTVHWAQ/glllFWTl1"
+    "Zlx51rNBe1aeb222hVvSXh1fScYkzy35sbwx+FdrzfVda3OQY/Kl1mZzIDh2XHlMdsKPYWXu"
+    "k4ml0v52StZCnbekJ5cI9Fwoym6YUpTgZ0WeOWuhzoCRt7dMK8oyvpC/tjY7cq4owV+9fxZl"
+    "5dQZMH+1vFKUZTDuzZCLJKmZtW18Xe6RCb/86OVK7RvosB1XfpJ1Qd22rUbkwTyMWT5/tVJW"
+    "zRvStkGbnbIdfcshaTtDFrVqqNO2QZuNZbG0ncHNsio2Sl8/bTYaVvi2Q+S7qujUc5J3ALbu"
+    "b2XjeVLyCt92jNU7Y89QYaHqs7i8Def7jVEBs5bPjvL3hzLl/buB9PX70qencb0cVTDe+KAh"
+    "Vx9Z2LJUDm+4t0ny9v54tK/yamW4PndKEDQyou3aJY/PVznpKWG6ZCHLdxbtjtkp+c5i1PKC"
+    "zH0C1atcbW/KMQFj0W7pJ4Nu5P0mmQpe3405CByDNW++ff7fyiB/Qm6X6d3jiDDcY1gZ5PvJ"
+    "lM6VKftA1oHsBZ9JsWwIgiAIgiAIgiAIgiAIgiAIgiDogoGBe8Bdvqf5wsv0AAAAAElFTkSu"
+    "QmCC")
+getappbar_clockData = appbar_clock.GetData
+getappbar_clockImage = appbar_clock.GetImage
+getappbar_clockBitmap = appbar_clock.GetBitmap
+resources['clock.png'] = getappbar_clockImage()
+img = resources['clock.png'].Copy()
+img.Replace(0, 0, 0, 128, 128, 128)
+resources['clock.png.disabled'] = img
+@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsubsection{delete.png}
+<<程序所需的图片和其他资源>>=
+appbar_delete = PyEmbeddedImage(
+    "iVBORw0KGgoAAAANSUhEUgAAAEwAAABMCAYAAADHl1ErAAAAAXNSR0IArs4c6QAAAARnQU1B"
+    "AACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAImSURBVHhe7drPK0VBFAfwxwKlkKJk"
+    "o1hRSpGdrBBlb2MjG0v/kIWtlR0rC2WHtcTCRlGi5EfC99yZ0Zi8cr17znvu+37q28y73qWZ"
+    "Zs597rsVIiIiIiIiIiIiIqL6aPFto+hH+lz3yxNy4boUW0FekY8k78g6QokzJJ2skFOEEpPI"
+    "FZJO1jUyizQEqxo2hXS6rpo35NB1/7d5JF01WllCVLX6VtOyby0s+laNxYSN+taC+t+yqGGy"
+    "JbtcV90Dsue6Oiw/uPYiq0hP9qo4j8gWcpu9KpEd5KdCXUTkd5uwqGHBjG81DPpWneWWPEeG"
+    "XTezi7wg3cicHPBOEHmvGEEmXDezj9wj7Uh89ZW6teC65XGExNso/JM9hsTHN5BA+vHPqp2z"
+    "jZiw3JKyMrTI1dGE5YRpDurGt+osJywdVIdvpY7VqilWWPgwm2erhklPbzJqbvdv6rnCilTK"
+    "Lcmin1M6KPksJYqoYU1R9EMN++3qiM9Pa1hTrLAisejnIFu6lCtMaxWYTZao55aM69BvVl98"
+    "fnxD0qzgC8sJE7UMLr6ahiusKO0KExqDMyv44j+tsGpKvSXj1VBLDZObjgG3ZBXPvhVxDWPR"
+    "z4krLCfTom9tEwn34S+RA587f0wijz2F4/EjUPKecFzODcctH0Uwt4aEgRaVhnkUSsMQIt9U"
+    "/zTwv0SeWBxAzNTjGddxZBppy17VRr66O3ZdIiIiIiIiIiIiIiKioFL5BFYl1SS0Sr0AAAAA"
+    "AElFTkSuQmCC")
+getappbar_deleteData = appbar_delete.GetData
+getappbar_deleteImage = appbar_delete.GetImage
+getappbar_deleteBitmap = appbar_delete.GetBitmap
+resources['delete.png'] = getappbar_deleteImage()
+img = resources['delete.png'].Copy()
+img.Replace(0, 0, 0, 128, 128, 128)
+resources['delete.png.disabled'] = img
 @
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{action}
@@ -282,7 +698,10 @@ notangle -R"action\\_in\\_win" -t4 $file> action.bat
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 <<action\_in\_win>>=
 @echo off
-myAlarms.py
+REM myAlarms.py
+REM alarmConfigTest.py
+REM alarmBriefTest.py
+alarmRunningTest.py
 pause
 exit 0
 @
