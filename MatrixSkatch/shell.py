@@ -1,5 +1,5 @@
 #-*- coding: utf-8 -*-
-import os
+import os, re
 from traceback import format_exc as fme
 
 class Shell:
@@ -12,6 +12,7 @@ class Shell:
 	}
 	commands = {}
 	history = []
+	values = []
 	def processEchoCommand(self, args):
 		try:
 			if len(args) == 0:
@@ -54,6 +55,51 @@ class Shell:
 		c[':exit'] = self.processExitCommand
 		c[':history'] = self.processHistoryCommand
 
+	def inputDeterminant(self, userInput):
+		datas = userInput[1:-1]
+		rows = datas.split(',')
+		d = []
+		for row in rows:
+			row = row.strip()
+			elems = row.split(' ')
+			r = []
+			for elem in elems:
+				r.append(float(elem))
+			d.append(r)
+		if False == self.isValidDeterminant(d):
+			return True
+		self.values.append(d)
+		self.msg('$%d=' % (len(self.values), ))
+		self.printDeterminant(self.values[-1])
+		return True
+
+	def isValidDeterminant(self, d):
+		rl = -1
+		for r in d:
+			if rl == -1:
+				rl = len(r)
+			elif len(r) != rl:
+				self.msg('invalid determinant')
+				return False
+		return True
+
+	def printDeterminant(self, d):
+		msg = ''
+		for r in d:
+			msg += '|'
+			for e in r:
+				msg +=str(e) + '\t'
+			msg += '|\n'
+		self.msg(msg)
+
+	def processOperationInput(self, userInput):
+		userInput = userInput.strip()
+		determinantPattern = re.compile(u'\[[^\]]+\]')
+		m = determinantPattern.match(userInput)
+		if m != None:
+			return self.inputDeterminant(userInput)
+		return False
+
 	def runShell(self):
 		self.installCommands()
 		while 1:
@@ -72,6 +118,8 @@ class Shell:
 					except Exception, e:
 						print e
 						print fme()
+				elif self.processOperationInput(userInput):
+					pass
 				else:
 					self.error('unknow command/operation "%s"' % (userInput))
 
