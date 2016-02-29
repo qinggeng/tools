@@ -10,7 +10,7 @@ def irreducible(a, b):
 	gcd = getGCD(a, b)
 	return a/gcd, b/gcd
 
-class Fraction:
+class Fraction(object):
 	def __init__(self, n, d):
 		self.n = n
 		self.d = d
@@ -48,15 +48,21 @@ class Fraction:
 	def __mul__(self, rhs):
 		if type(rhs) == int:
 			rhs = Fraction(rhs, 1)
-		nn = self.n * rhs.n
-		nd = self.d * rhs.d
-		if 0 == nn:
-			return Fraction(0, nd)
-		gcd = getGCD(abs(nn), abs(nd))
-		return Fraction(nn / gcd, nd / gcd)
+		if type(rhs) == Fraction:
+			nn = self.n * rhs.n
+			nd = self.d * rhs.d
+			if 0 == nn:
+				return Fraction(0, nd)
+			gcd = getGCD(abs(nn), abs(nd))
+			return Fraction(nn / gcd, nd / gcd)
+		else:
+			return rhs * self
 
 	def __rmul__(self, lhs):
-		return self * lhs
+		try:
+			return self * lhs
+		except Exception, e:
+			return lhs * self
 
 	def __div__(self, rhs):
 		if type(rhs) == int:
