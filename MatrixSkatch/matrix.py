@@ -13,6 +13,19 @@ class Matrix(object):
 			ret += ' |'
 		return ret
 
+	def __eq__(self, rhs):
+		if type(rhs) != type(self):
+			raise TypeError('Not the same type')
+		if len(self.rows) != len(rhs.rows):
+			return False
+		for lrow, rrow in zip(self.rows, rhs.rows):
+			if len(lrow) != len(rrow):
+				return False
+			for le, re in zip(lrow, rrow):
+				if le != re:
+					return False
+		return True
+
 	def __mul__(self, val):
 		ret = map(lambda row: map(lambda elem: elem * val, row), self.rows)
 		return Matrix(ret)

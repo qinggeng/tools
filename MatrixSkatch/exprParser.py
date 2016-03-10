@@ -7,6 +7,18 @@ from traceback import format_exc as fme
 kRow = 'row'
 kElement = 'element'
 kMatrix = 'matrix'
+class ParserContext(object):
+	def __init__(self):
+		self.unnamedVariables_ = []
+
+	@property
+	def unnamedVariables(self):
+		return self.unnamedVariables_
+
+	@unnamedVariables.setter
+	def unnamedVariables(self, val):
+		self.unnamedVariables_ = val
+
 @leftAssoc('+', '-')
 @leftAssoc('*', '/')
 @nonAssoc('UNARYMINUS') 
@@ -15,9 +27,14 @@ class Parser(LRParser, ReLexer):
 		LRParser.__init__(self)
 		ReLexer.__init__(self)
 		self.stack = []
+
 	@token('[1-9][0-9]*')
 	def number(self, tok):
 		tok.value = int(tok.value)
+
+	@token(r'\$[0-9a-zA-Z_]+')
+	def namedVariable(self, tok):
+		tok.value = 'variable'
 
 	@production('Expr -> "-" Expr<e>', priority = 'UNARYMINUS')
 	def minusExpr(self, e):
@@ -82,9 +99,10 @@ class Parser(LRParser, ReLexer):
 		return sentence
 if __name__ == '__main__':
 	c = Parser()
-	print c.parse('1+2')
-	print c.parse('[1/3 2, 3 4]')
-	print c.ret
+	c.parse('1+2')
+	assert c.ret == 3
+	c.parse('[1/3 2, 3 4]')
+	assert c.ret == Matrix([[Fraction(1, 3), 2], [3, 4]])
 	print c.parse('1')
 	print c.parse('-1')
 	print c.parse('-[-1/3 2, 3 4]')
