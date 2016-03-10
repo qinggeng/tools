@@ -9,7 +9,8 @@ class Matrix(object):
 			ret += '\n| '
 			for elem in row:
 				ret += str(elem) + '\t'
-			ret += '|'
+			ret = ret[:-1]
+			ret += ' |'
 		return ret
 
 	def __mul__(self, val):

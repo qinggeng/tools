@@ -1,6 +1,7 @@
 #-*- coding: utf-8 -*-
 import os, re
 from traceback import format_exc as fme
+from exprParser import Parser
 
 class Shell:
 	echo = False
@@ -55,22 +56,14 @@ class Shell:
 		c[':exit'] = self.processExitCommand
 		c[':history'] = self.processHistoryCommand
 
-	def inputDeterminant(self, userInput):
-		datas = userInput[1:-1]
-		rows = datas.split(',')
-		d = []
-		for row in rows:
-			row = row.strip()
-			elems = row.split(' ')
-			r = []
-			for elem in elems:
-				r.append(float(elem))
-			d.append(r)
-		if False == self.isValidDeterminant(d):
-			return True
+	def inputOperation(self, userInput):
+		parser = Parser()
+		parser.parse(userInput)
+		d = parser.ret
 		self.values.append(d)
 		self.msg('$%d=' % (len(self.values), ))
-		self.printDeterminant(self.values[-1])
+		self.msg(str(d))
+		#self.printDeterminant(self.values[-1])
 		return True
 
 	def isValidDeterminant(self, d):
@@ -94,10 +87,7 @@ class Shell:
 
 	def processOperationInput(self, userInput):
 		userInput = userInput.strip()
-		determinantPattern = re.compile(u'\[[^\]]+\]')
-		m = determinantPattern.match(userInput)
-		if m != None:
-			return self.inputDeterminant(userInput)
+		return self.inputOperation(userInput)
 		return False
 
 	def runShell(self):

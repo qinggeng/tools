@@ -12,8 +12,17 @@ def irreducible(a, b):
 
 class Fraction(object):
 	def __init__(self, n, d):
-		self.n = n
-		self.d = d
+		if type(n) == Fraction:
+			self.n = n.n
+			self.d = n.d
+		else:
+			self.n = n
+			self.d = 1
+		if type(d) == Fraction:
+			self.n *= d.d
+			self.d *= d.n
+		else:
+			self.d *= d
 
 	def __add__(self, rhs):
 		if type(rhs) == int:
@@ -81,6 +90,10 @@ class Fraction(object):
 		return Fraction(-self.n, self.d)
 
 	def __cmp__(self, rhs):
+		if rhs == None:
+			return 1
+		elif type(rhs) == int:
+			rhs = Fraction(rhs, 1)
 		v1 = self.n * rhs.d
 		v2 = rhs.n * self.d
 		return cmp(v1, v2)
