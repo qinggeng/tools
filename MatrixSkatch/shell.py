@@ -1,7 +1,7 @@
 #-*- coding: utf-8 -*-
 import os, re
 from traceback import format_exc as fme
-from exprParser import Parser
+from exprParser import Parser, ParserContext
 
 class Shell:
 	echo = False
@@ -58,6 +58,9 @@ class Shell:
 
 	def inputOperation(self, userInput):
 		parser = Parser()
+		context = ParserContext()
+		context.unnamedVariables = self.values
+		parser.context = context
 		parser.parse(userInput)
 		d = parser.ret
 		self.values.append(d)

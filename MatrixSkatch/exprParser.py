@@ -28,13 +28,21 @@ class Parser(LRParser, ReLexer):
 		ReLexer.__init__(self)
 		self.stack = []
 
+	@property
+	def context(self):
+		return self.context_
+	@context.setter
+	def context(self, val):
+		self.context_ = val
+
 	@token('[1-9][0-9]*')
 	def number(self, tok):
 		tok.value = int(tok.value)
 
 	@token(r'\$[0-9a-zA-Z_]+')
-	def namedVariable(self, tok):
-		tok.value = 'variable'
+	def positionalVariable(self, tok):
+		variableIndex = int(tok.value[1:]) - 1
+		tok.value = self.context.unnamedVariables[variableIndex]
 
 	@production('Expr -> "-" Expr<e>', priority = 'UNARYMINUS')
 	def minusExpr(self, e):
@@ -51,13 +59,19 @@ class Parser(LRParser, ReLexer):
 	@production('Expr -> Expr<l> "*" Expr<r>')
 	def binaryMul(self, l, r):
 		return l * r
+
+	@production('Variable -> positionalVariable<v>')
+	def variable(self, v):
+		return v
 		
-	@production('Expr -> Matrix<m> | Factor<f>')
-	def expr(self, m = None, f = None):
+	@production('Expr -> Matrix<m> | Factor<f> | Variable<v>')
+	def expr(self, m = None, f = None, v = None):
 		if m != None:
 			return m
 		elif f != None:
 			return f
+		elif v != None:
+			return v
 
 	@production('Factor -> Num<val>')
 	def factor(self, val):
@@ -94,7 +108,6 @@ class Parser(LRParser, ReLexer):
 
 
 	def newSentence(self, sentence):
-		print 'newSentence:', sentence
 		self.ret = sentence
 		return sentence
 if __name__ == '__main__':
@@ -103,19 +116,46 @@ if __name__ == '__main__':
 	assert c.ret == 3
 	c.parse('[1/3 2, 3 4]')
 	assert c.ret == Matrix([[Fraction(1, 3), 2], [3, 4]])
-	print c.parse('1')
-	print c.parse('-1')
-	print c.parse('-[-1/3 2, 3 4]')
-	print c.parse('1/2')
-	print c.parse('-1/2')
-	print c.parse('-1/2 + 1')
-	print c.parse('-1/2 + 1')
-	print c.parse('-1/2 - 1')
-	print c.parse('-1/2 + 1/3')
-	print c.parse('-1/2 - 1/3')
-	print c.parse('1/2 - 1/3')
-	print c.parse('-1/2 * 1')
-	print c.parse('1 * 1/2')
-	print c.parse('1/2 * 1/2')
+	c.parse('1')
+	assert c.ret == 1
+	c.parse('-1')
+	assert c.ret == -1
+	c.parse('-[-1/3 2, 3 4]')
+	assert c.ret == -1 * Matrix([[Fraction(-1, 3), 2], [3, 4]])
+	c.parse('1/2')
+	assert c.ret == Fraction(1, 2)
+	c.parse('-1/2')
+	assert c.ret == Fraction(-1, 2)
+	c.parse('-1/2 + 1')
+	assert c.ret == Fraction(-1, 2) + 1
+	c.parse('-1/2 - 1')
+	assert c.ret == Fraction(-1, 2) - 1
+	c.parse('-1/2 + 1/3')
+	assert c.ret == Fraction(-1, 2) + Fraction(1, 3)
+	c.parse('-1/2 - 1/3')
+	assert c.ret == Fraction(-1, 2) - Fraction(1, 3)
+	c.parse('1/2 - 1/3')
+	assert c.ret == Fraction(1, 2) - Fraction(1, 3)
+	c.parse('-1/2 * 1')
+	assert c.ret == Fraction(-1, 2)
+	c.parse('1 * 1/2')
+	assert c.ret == Fraction(1, 2)
+	c.parse('1/2 * 1/2')
+	assert c.ret == Fraction(1, 4)
+	unnamedVariables = [1, 2, 3, Fraction(1, 2), Matrix([[1, 2], [3, 4]])]
+	context = ParserContext()
+	context.unnamedVariables = unnamedVariables
+	c.context = context
+	c.parse('$1')
+	assert c.ret == 1
+	c.parse('$2')
+	assert c.ret == 2
+	c.parse('$3')
+	assert c.ret == 3
+	c.parse('$4')
+	assert c.ret == Fraction(1, 2)
+	c.parse('$5')
+	assert c.ret == Matrix([[1, 2], [3, 4]])
+	c.parse('$1 + $2')
+	assert c.ret == 3
 	#TODO running tests
-	pass
