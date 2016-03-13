@@ -14,6 +14,7 @@ class Shell:
 	commands = {}
 	history = []
 	values = []
+	ops = []
 	def processEchoCommand(self, args):
 		try:
 			if len(args) == 0:
@@ -43,6 +44,11 @@ class Shell:
 		for item, i in zip(h, reversed(range(historyLen))):
 			self.msg('%d. %s' % (i + 1, item))
 
+	def processOps(self, args):
+		ops = self.ops
+		for op in self.ops:
+			self.msg(op)
+
 	def msg(self, txt):
 		print txt
 
@@ -52,9 +58,10 @@ class Shell:
 
 	def installCommands(self):
 		c = self.commands
-		self.commands[':echo'] = self.processEchoCommand
+		c[':echo'] = self.processEchoCommand
 		c[':exit'] = self.processExitCommand
 		c[':history'] = self.processHistoryCommand
+		c[':ops'] = self.processOps
 
 	def inputOperation(self, userInput):
 		parser = Parser()
@@ -112,6 +119,7 @@ class Shell:
 						print e
 						print fme()
 				elif self.processOperationInput(userInput):
+					self.ops.append(userInput)
 					pass
 				else:
 					self.error('unknow command/operation "%s"' % (userInput))
